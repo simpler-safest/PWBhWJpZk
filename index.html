@@ -1,0 +1,1680 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Padel Match Finder</title>
+    <style>
+        :root {
+            --bg: #f0f2f5;
+            --text: #1a1a2e;
+            --card-bg: #fff;
+            --card-shadow: rgba(0, 0, 0, .08);
+            --card-shadow-hover: rgba(0, 0, 0, .12);
+            --border: #e0e0e0;
+            --border-light: #e2e8f0;
+            --muted: #64748b;
+            --muted-light: #94a3b8;
+            --tag-bg: #f1f5f9;
+            --tag-text: #475569;
+            --player-bg: #f8fafc;
+            --player-empty-border: #c8d6e5;
+            --btn-border: #d0d0d0;
+            --btn-text: #333;
+            --btn-hover: #f0f0f0;
+            --filter-hover: #f1f5f9;
+            --track-bg: #e2e8f0;
+            --accent: #3b82f6;
+            --green: #22c55e;
+            --error: #dc2626;
+            --address: #777;
+        }
+
+        [data-theme="dark"] {
+            --bg: #0f172a;
+            --text: #e2e8f0;
+            --card-bg: #1e293b;
+            --card-shadow: rgba(0, 0, 0, .3);
+            --card-shadow-hover: rgba(0, 0, 0, .5);
+            --border: #334155;
+            --border-light: #334155;
+            --muted: #94a3b8;
+            --muted-light: #64748b;
+            --tag-bg: #334155;
+            --tag-text: #cbd5e1;
+            --player-bg: #0f172a;
+            --player-empty-border: #475569;
+            --btn-border: #475569;
+            --btn-text: #e2e8f0;
+            --btn-hover: #334155;
+            --filter-hover: #334155;
+            --track-bg: #475569;
+            --accent: #3b82f6;
+            --green: #22c55e;
+            --error: #f87171;
+            --address: #94a3b8;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            transition: background .2s, color .2s;
+        }
+
+        .container {
+            max-width: 1100px;
+            margin: 0 auto;
+            padding: 24px 16px;
+        }
+
+        h1 {
+            font-size: 22px;
+            font-weight: 700;
+            margin-bottom: 20px;
+        }
+
+        /* Date Picker */
+        .toolbar {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 24px;
+        }
+
+        .date-picker {
+            display: inline-flex;
+            align-items: center;
+            gap: 10px;
+            background: var(--card-bg);
+            padding: 0 16px;
+            height: 44px;
+            border-radius: 8px;
+            box-shadow: 0 1px 3px var(--card-shadow);
+            user-select: none;
+        }
+
+        .date-picker .sport-label {
+            font-weight: 600;
+            font-size: 14px;
+            padding-right: 10px;
+            border-right: 1px solid var(--border);
+        }
+
+        .date-picker button {
+            background: none;
+            border: 1px solid var(--btn-border);
+            border-radius: 50%;
+            width: 28px;
+            height: 28px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 14px;
+            color: var(--btn-text);
+            transition: background .15s;
+        }
+
+        .date-picker button:hover {
+            background: var(--btn-hover);
+        }
+
+        .date-display {
+            font-weight: 600;
+            font-size: 15px;
+            min-width: 130px;
+            text-align: center;
+            cursor: pointer;
+        }
+
+        .date-display:hover {
+            color: var(--accent);
+        }
+
+        .hidden-date-input {
+            position: absolute;
+            opacity: 0;
+            pointer-events: none;
+            width: 0;
+            height: 0;
+        }
+
+        /* Level Controls */
+        .level-stack {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+
+        .level-control {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            background: var(--card-bg);
+            padding: 0 12px;
+            height: 20px;
+            border-radius: 5px;
+            box-shadow: 0 1px 3px var(--card-shadow);
+        }
+
+        .level-control label {
+            font-weight: 600;
+            font-size: 12px;
+            color: var(--muted);
+            white-space: nowrap;
+        }
+
+        .level-control .value-display {
+            font-size: 11px;
+            font-weight: 700;
+            color: var(--text);
+            min-width: 26px;
+            text-align: center;
+        }
+
+        .level-control input[type=range] {
+            width: 80px;
+            -webkit-appearance: none;
+            appearance: none;
+            background: #e2e8f0;
+            height: 4px;
+            border-radius: 2px;
+            outline: none;
+            cursor: pointer;
+        }
+
+        .level-control input[type=range]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 14px;
+            height: 14px;
+            border-radius: 50%;
+            background: var(--accent);
+            border: 2px solid #fff;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, .3);
+            cursor: grab;
+        }
+
+        .level-control input[type=range]::-webkit-slider-thumb:active {
+            cursor: grabbing;
+        }
+
+        .level-control input[type=range]::-moz-range-thumb {
+            width: 14px;
+            height: 14px;
+            border-radius: 50%;
+            background: var(--accent);
+            border: 2px solid #fff;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, .3);
+            cursor: grab;
+        }
+
+        .level-control input[type=range]::-moz-range-thumb:active {
+            cursor: grabbing;
+        }
+
+        .level-control input[type=range]::-moz-range-track {
+            background: var(--track-bg);
+            height: 4px;
+            border-radius: 2px;
+            border: none;
+        }
+
+        .dual-range {
+            position: relative;
+            width: 80px;
+            height: 16px;
+        }
+
+        .dual-range input[type=range] {
+            position: absolute;
+            width: 100%;
+            top: 0;
+            left: 0;
+            pointer-events: none;
+            -webkit-appearance: none;
+            appearance: none;
+            background: none;
+            height: 16px;
+            margin: 0;
+        }
+
+        .dual-range input[type=range]::-webkit-slider-thumb {
+            pointer-events: auto;
+            -webkit-appearance: none;
+            width: 14px;
+            height: 14px;
+            border-radius: 50%;
+            background: var(--accent);
+            border: 2px solid #fff;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, .3);
+            cursor: grab;
+        }
+
+        .dual-range input[type=range]::-webkit-slider-thumb:active {
+            cursor: grabbing;
+        }
+
+        .dual-range input[type=range]::-moz-range-thumb {
+            pointer-events: auto;
+            width: 14px;
+            height: 14px;
+            border-radius: 50%;
+            background: var(--accent);
+            border: 2px solid #fff;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, .3);
+            cursor: grab;
+        }
+
+        .dual-range input[type=range]::-moz-range-thumb:active {
+            cursor: grabbing;
+        }
+
+        .dual-range .track {
+            position: absolute;
+            top: 6px;
+            height: 4px;
+            background: var(--track-bg);
+            width: 100%;
+            border-radius: 2px;
+        }
+
+        .dual-range .track-fill {
+            position: absolute;
+            top: 6px;
+            height: 4px;
+            background: var(--accent);
+            border-radius: 2px;
+        }
+
+        /* Club Section */
+        .club-section {
+            margin-bottom: 32px;
+        }
+
+        .club-header {
+            font-size: 16px;
+            font-weight: 700;
+            margin-bottom: 14px;
+            padding: 12px 16px;
+            background: var(--card-bg);
+            border-radius: 8px;
+            box-shadow: 0 1px 3px var(--card-shadow);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .club-header .address {
+            font-weight: 400;
+            font-size: 13px;
+            color: var(--address);
+            margin-left: auto;
+        }
+
+        /* Match Cards Grid */
+        .matches-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(270px, 1fr));
+            gap: 14px;
+        }
+
+        .match-card {
+            background: var(--card-bg);
+            border-radius: 10px;
+            padding: 16px;
+            box-shadow: 0 1px 4px var(--card-shadow);
+            border-left: 4px solid var(--green);
+            transition: box-shadow .15s;
+        }
+
+        .match-card:hover {
+            box-shadow: 0 4px 12px var(--card-shadow-hover);
+        }
+
+        .match-card.full {
+            border-left-color: var(--muted-light);
+            opacity: .7;
+        }
+
+        .match-time {
+            display: flex;
+            justify-content: space-between;
+            align-items: baseline;
+            font-size: 20px;
+            font-weight: 700;
+            margin-bottom: 6px;
+            letter-spacing: -.5px;
+        }
+
+        .match-price {
+            color: var(--green);
+            font-weight: 700;
+            font-size: 15px;
+        }
+
+        .match-meta {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+
+        .match-level {
+            color: var(--muted);
+            font-size: 13px;
+        }
+
+        .match-tags {
+            display: flex;
+            gap: 5px;
+            flex-wrap: wrap;
+            margin-bottom: 10px;
+            align-items: center;
+        }
+
+        .match-tags .spacer {
+            margin-left: auto;
+        }
+
+        .tag-duration {
+            background: var(--tag-bg);
+            color: var(--muted);
+            font-variant-numeric: tabular-nums;
+        }
+
+        .tag {
+            display: inline-block;
+            background: var(--tag-bg);
+            color: var(--tag-text);
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-size: 11px;
+            font-weight: 600;
+            text-transform: capitalize;
+        }
+
+        .match-type {
+            font-size: 11px;
+            font-weight: 600;
+            padding: 2px 8px;
+            border-radius: 4px;
+        }
+
+        .type-competitive {
+            background: #fef3c7;
+            color: #92400e;
+        }
+
+        .type-friendly {
+            background: #dbeafe;
+            color: #1e40af;
+        }
+
+        [data-theme="dark"] .type-competitive {
+            background: #78350f;
+            color: #fde68a;
+        }
+
+        [data-theme="dark"] .type-friendly {
+            background: #1e3a5f;
+            color: #93c5fd;
+        }
+
+        .players-list {
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+        }
+
+        .player-row {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 13px;
+            padding: 4px 8px;
+            border-radius: 6px;
+            background: var(--player-bg);
+        }
+
+        .player-avatar {
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            object-fit: cover;
+            flex-shrink: 0;
+        }
+
+        .player-avatar-placeholder {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            background: var(--tag-bg);
+            font-size: 12px;
+            flex-shrink: 0;
+        }
+
+        .player-row.empty {
+            border: 1px dashed var(--player-empty-border);
+            background: var(--card-bg);
+            color: var(--green);
+            font-weight: 500;
+        }
+
+        .player-level {
+            margin-left: auto;
+            font-size: 12px;
+            color: var(--muted-light);
+            font-weight: 500;
+        }
+
+        .spots-summary {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-top: 10px;
+            font-size: 13px;
+            color: var(--muted);
+        }
+
+        .spots-summary .avail {
+            color: var(--green);
+            font-weight: 700;
+        }
+
+        .match-link {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            font-size: 12px;
+            font-weight: 600;
+            color: var(--accent);
+            text-decoration: none;
+            padding: 4px 10px;
+            border-radius: 6px;
+            border: 1px solid var(--accent);
+            transition: background .15s, color .15s;
+        }
+
+        .match-link:hover {
+            background: var(--accent);
+            color: #fff;
+        }
+
+        /* States */
+        .loading,
+        .error-msg,
+        .no-matches {
+            text-align: center;
+            padding: 36px 16px;
+            border-radius: 10px;
+            background: var(--card-bg);
+            box-shadow: 0 1px 3px var(--card-shadow);
+        }
+
+        .loading {
+            color: var(--muted);
+        }
+
+        .loading::before {
+            content: '';
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 2px solid var(--border-light);
+            border-top-color: var(--accent);
+            border-radius: 50%;
+            animation: spin .6s linear infinite;
+            margin-right: 10px;
+            vertical-align: middle;
+        }
+
+        @keyframes spin {
+            to {
+                transform: rotate(360deg);
+            }
+        }
+
+        .error-msg {
+            color: var(--error);
+        }
+
+        .error-msg .hint {
+            color: var(--muted);
+            font-size: 13px;
+            margin-top: 8px;
+        }
+
+        .no-matches {
+            color: var(--muted-light);
+            font-style: italic;
+        }
+
+        /* Time Filter */
+        .time-filter {
+            display: inline-flex;
+            align-items: center;
+            gap: 0;
+            background: var(--card-bg);
+            padding: 0;
+            height: 44px;
+            border-radius: 8px;
+            box-shadow: 0 1px 3px var(--card-shadow);
+            overflow: hidden;
+        }
+
+        .time-filter button {
+            border: none;
+            background: none;
+            padding: 0 14px;
+            height: 100%;
+            font-size: 12px;
+            font-weight: 600;
+            color: var(--muted);
+            cursor: pointer;
+            transition: background .15s, color .15s;
+            white-space: nowrap;
+        }
+
+        .time-filter button:hover {
+            background: var(--filter-hover);
+        }
+
+        .time-filter button.active {
+            background: var(--accent);
+            color: #fff;
+        }
+
+        .time-filter button+button {
+            border-left: 1px solid var(--border-light);
+        }
+
+        /* Duration Filter */
+        .duration-filter {
+            display: inline-flex;
+            align-items: center;
+            gap: 0;
+            background: var(--card-bg);
+            padding: 0;
+            height: 44px;
+            border-radius: 8px;
+            box-shadow: 0 1px 3px var(--card-shadow);
+            overflow: hidden;
+        }
+
+        .duration-filter button {
+            border: none;
+            background: none;
+            padding: 0 14px;
+            height: 100%;
+            font-size: 12px;
+            font-weight: 600;
+            color: var(--muted);
+            cursor: pointer;
+            transition: background .15s, color .15s;
+            white-space: nowrap;
+        }
+
+        .duration-filter button:hover {
+            background: var(--filter-hover);
+        }
+
+        .duration-filter button.active {
+            background: var(--accent);
+            color: #fff;
+        }
+
+        .duration-filter button+button {
+            border-left: 1px solid var(--border-light);
+        }
+
+        /* Theme Toggle */
+        .theme-toggle {
+            margin-left: auto;
+            background: var(--card-bg);
+            border: none;
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            box-shadow: 0 1px 3px var(--card-shadow);
+            cursor: pointer;
+            font-size: 18px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: background .15s;
+        }
+
+        .theme-toggle:hover {
+            background: var(--filter-hover);
+        }
+
+        /* Login Screen */
+        .login-overlay {
+            position: fixed;
+            inset: 0;
+            z-index: 1000;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: linear-gradient(135deg, #0f172a 0%, #1e3a5f 40%, #1e293b 100%);
+            animation: loginBgShift 12s ease-in-out infinite alternate;
+        }
+
+        @keyframes loginBgShift {
+            0% {
+                background: linear-gradient(135deg, #0f172a 0%, #1e3a5f 40%, #1e293b 100%);
+            }
+
+            50% {
+                background: linear-gradient(135deg, #0f172a 0%, #1a2744 50%, #162032 100%);
+            }
+
+            100% {
+                background: linear-gradient(135deg, #0c1322 0%, #1e3a5f 60%, #1e293b 100%);
+            }
+        }
+
+        .login-card {
+            width: 100%;
+            max-width: 400px;
+            margin: 0 16px;
+            padding: 40px 32px;
+            border-radius: 16px;
+            background: rgba(30, 41, 59, 0.7);
+            backdrop-filter: blur(24px);
+            -webkit-backdrop-filter: blur(24px);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            box-shadow: 0 24px 48px rgba(0, 0, 0, 0.4), 0 0 0 1px rgba(255, 255, 255, 0.04);
+            animation: cardFadeIn 0.5s ease-out;
+        }
+
+        @keyframes cardFadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(20px) scale(0.97);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0) scale(1);
+            }
+        }
+
+        .login-card h2 {
+            color: #e2e8f0;
+            font-size: 24px;
+            font-weight: 700;
+            margin-bottom: 6px;
+            text-align: center;
+        }
+
+        .login-card .login-subtitle {
+            color: #94a3b8;
+            font-size: 14px;
+            text-align: center;
+            margin-bottom: 28px;
+        }
+
+        .login-card .login-logo {
+            text-align: center;
+            font-size: 36px;
+            margin-bottom: 16px;
+        }
+
+        .login-field {
+            margin-bottom: 18px;
+        }
+
+        .login-field label {
+            display: block;
+            font-size: 13px;
+            font-weight: 600;
+            color: #94a3b8;
+            margin-bottom: 6px;
+        }
+
+        .login-field input {
+            width: 100%;
+            padding: 12px 14px;
+            border-radius: 10px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            background: rgba(15, 23, 42, 0.6);
+            color: #e2e8f0;
+            font-size: 15px;
+            outline: none;
+            transition: border-color 0.2s, box-shadow 0.2s;
+        }
+
+        .login-field input::placeholder {
+            color: #475569;
+        }
+
+        .login-field input:focus {
+            border-color: var(--accent);
+            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.2);
+        }
+
+        .login-btn {
+            width: 100%;
+            padding: 13px;
+            border: none;
+            border-radius: 10px;
+            background: linear-gradient(135deg, #3b82f6, #2563eb);
+            color: #fff;
+            font-size: 15px;
+            font-weight: 700;
+            cursor: pointer;
+            transition: transform 0.15s, box-shadow 0.15s;
+            margin-top: 6px;
+        }
+
+        .login-btn:hover:not(:disabled) {
+            transform: translateY(-1px);
+            box-shadow: 0 6px 20px rgba(59, 130, 246, 0.35);
+        }
+
+        .login-btn:active:not(:disabled) {
+            transform: translateY(0);
+        }
+
+        .login-btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+
+        .login-btn .spinner {
+            display: inline-block;
+            width: 16px;
+            height: 16px;
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            border-top-color: #fff;
+            border-radius: 50%;
+            animation: spin 0.6s linear infinite;
+            vertical-align: middle;
+            margin-right: 8px;
+        }
+
+        .login-error {
+            background: rgba(220, 38, 38, 0.12);
+            border: 1px solid rgba(220, 38, 38, 0.3);
+            color: #f87171;
+            padding: 10px 14px;
+            border-radius: 8px;
+            font-size: 13px;
+            margin-bottom: 16px;
+            display: none;
+            animation: shakeX 0.4s ease;
+        }
+
+        @keyframes shakeX {
+
+            0%,
+            100% {
+                transform: translateX(0);
+            }
+
+            20% {
+                transform: translateX(-6px);
+            }
+
+            40% {
+                transform: translateX(6px);
+            }
+
+            60% {
+                transform: translateX(-4px);
+            }
+
+            80% {
+                transform: translateX(4px);
+            }
+        }
+
+        .login-error.visible {
+            display: block;
+        }
+
+        /* Logout button */
+        .logout-btn {
+            background: var(--card-bg);
+            border: 1px solid var(--error);
+            color: var(--error);
+            padding: 0 14px;
+            height: 36px;
+            border-radius: 8px;
+            font-size: 12px;
+            font-weight: 600;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            transition: background 0.15s, color 0.15s;
+        }
+
+        .logout-btn:hover {
+            background: var(--error);
+            color: #fff;
+        }
+
+        .login-overlay.hidden {
+            display: none;
+        }
+
+        .app-content.hidden {
+            display: none;
+        }
+    </style>
+</head>
+
+<body>
+    <!-- Login Overlay -->
+    <div class="login-overlay" id="loginOverlay">
+        <div class="login-card">
+            <div class="login-logo">🏓</div>
+            <h2>Padel Match Finder</h2>
+            <p class="login-subtitle">Sign in with your Playtomic account</p>
+            <div class="login-error" id="loginError"></div>
+            <form id="loginForm" onsubmit="handleLogin(event)">
+                <div class="login-field">
+                    <label for="loginEmail">Email</label>
+                    <input type="email" id="loginEmail" placeholder="you@example.com" required autocomplete="email">
+                </div>
+                <div class="login-field">
+                    <label for="loginPassword">Password</label>
+                    <input type="password" id="loginPassword" placeholder="••••••••" required
+                        autocomplete="current-password">
+                </div>
+                <button type="submit" class="login-btn" id="loginBtn">Sign In</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- App Content -->
+    <div class="app-content hidden" id="appContent">
+        <div class="container">
+            <h1>Padel Match Finder</h1>
+
+            <div class="toolbar">
+                <div class="date-picker">
+                    <span class="sport-label">Padel</span>
+                    <button onclick="changeDate(-1)" aria-label="Previous day">&#8249;</button>
+                    <span class="date-display" id="dateDisplay" onclick="openDatePicker()">
+                        <span id="dateText"></span>
+                    </span>
+                    <input type="date" class="hidden-date-input" id="dateInput" onchange="onDatePick(this.value)">
+                    <button onclick="changeDate(1)" aria-label="Next day">&#8250;</button>
+                </div>
+                <div class="level-stack">
+                    <div class="level-control">
+                        <label>My Level</label>
+                        <div class="value-display" id="myLevelDisplay">1.50</div>
+                        <input type="range" id="myLevel" min="0" max="6" step="0.01" value="1.50"
+                            oninput="onLevelChange()">
+                    </div>
+                    <div class="level-control">
+                        <label>Range</label>
+                        <div class="value-display"><span id="minLevelDisplay">0.00</span>–<span
+                                id="maxLevelDisplay">4.50</span></div>
+                        <div class="dual-range">
+                            <div class="track"></div>
+                            <div class="track-fill" id="trackFill"></div>
+                            <input type="range" id="minLevel" min="0" max="6" step="0.10" value="0"
+                                oninput="onRangeChange('min')">
+                            <input type="range" id="maxLevel" min="0" max="6" step="0.10" value="4.50"
+                                oninput="onRangeChange('max')">
+                        </div>
+                    </div>
+                </div>
+                <div class="time-filter" id="timeFilter">
+                    <button data-time="morning" onclick="setTimeFilter('morning')">Morning<br>06–12</button>
+                    <button data-time="afternoon" onclick="setTimeFilter('afternoon')">Afternoon<br>12–18</button>
+                    <button data-time="evening" onclick="setTimeFilter('evening')"
+                        class="active">Evening<br>18–24</button>
+                </div>
+                <div class="duration-filter" id="durationFilter">
+                    <button data-dur="60" onclick="setDurationFilter('60')">60 min</button>
+                    <button data-dur="90" onclick="setDurationFilter('90')" class="active">90 min</button>
+                    <button data-dur="120" onclick="setDurationFilter('120')" class="active">120 min</button>
+                </div>
+                <button class="logout-btn" onclick="handleLogout()" aria-label="Sign out">⏻ Sign Out</button>
+                <button class="theme-toggle" id="themeToggle" onclick="toggleTheme()"
+                    aria-label="Toggle dark mode"></button>
+            </div>
+
+            <div id="content"></div>
+        </div>
+    </div>
+
+    <script>
+        const API_BASE = 'https://corsproxy.io/?url=https://api.app.playtomic.io';
+
+        // ========================
+        // AUTH MODULE
+        // ========================
+        const AUTH_STORAGE_KEY = 'playtomic_auth';
+        const AUTH_LOGIN_URL = API_BASE + '/v3/auth/login';
+        const AUTH_REFRESH_URL = API_BASE + '/v3/auth/token/refresh';
+        const TOKEN_REFRESH_MARGIN_MS = 5 * 60 * 1000; // refresh 5 min before expiry
+        let refreshTimerHandle = null;
+
+        function getStoredAuth() {
+            try {
+                const raw = localStorage.getItem(AUTH_STORAGE_KEY);
+                return raw ? JSON.parse(raw) : null;
+            } catch (_) {
+                return null;
+            }
+        }
+
+        function storeAuth(data) {
+            localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify({
+                access_token: data.access_token,
+                access_token_expiration: data.access_token_expiration,
+                refresh_token: data.refresh_token,
+                refresh_token_expiration: data.refresh_token_expiration,
+                user_id: data.user_id
+            }));
+        }
+
+        function clearAuth() {
+            localStorage.removeItem(AUTH_STORAGE_KEY);
+            if (refreshTimerHandle) {
+                clearTimeout(refreshTimerHandle);
+                refreshTimerHandle = null;
+            }
+        }
+
+        function isAccessTokenValid(auth) {
+            if (!auth || !auth.access_token || !auth.access_token_expiration) return false;
+            const exp = new Date(auth.access_token_expiration + 'Z').getTime();
+            return Date.now() < exp;
+        }
+
+        function isRefreshTokenValid(auth) {
+            if (!auth || !auth.refresh_token || !auth.refresh_token_expiration) return false;
+            const exp = new Date(auth.refresh_token_expiration + 'Z').getTime();
+            return Date.now() < exp;
+        }
+
+        async function refreshAccessToken() {
+            const auth = getStoredAuth();
+            if (!auth || !isRefreshTokenValid(auth)) {
+                clearAuth();
+                showLoginScreen();
+                return false;
+            }
+            try {
+                const res = await fetch(AUTH_REFRESH_URL, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ refresh_token: auth.refresh_token })
+                });
+                if (!res.ok) {
+                    console.warn('Token refresh failed: HTTP ' + res.status);
+                    clearAuth();
+                    showLoginScreen();
+                    return false;
+                }
+                const data = await res.json();
+                storeAuth(data);
+                scheduleTokenRefresh();
+                console.log('Access token refreshed successfully');
+                return true;
+            } catch (e) {
+                console.warn('Token refresh error:', e);
+                clearAuth();
+                showLoginScreen();
+                return false;
+            }
+        }
+
+        function scheduleTokenRefresh() {
+            if (refreshTimerHandle) {
+                clearTimeout(refreshTimerHandle);
+                refreshTimerHandle = null;
+            }
+            const auth = getStoredAuth();
+            if (!auth || !auth.access_token_expiration) return;
+
+            const expMs = new Date(auth.access_token_expiration + 'Z').getTime();
+            const delay = expMs - Date.now() - TOKEN_REFRESH_MARGIN_MS;
+
+            if (delay <= 0) {
+                // Token is already near-expired, refresh immediately
+                refreshAccessToken();
+            } else {
+                refreshTimerHandle = setTimeout(() => {
+                    refreshAccessToken();
+                }, delay);
+                console.log('Token refresh scheduled in ' + Math.round(delay / 1000) + 's');
+            }
+        }
+
+        async function ensureValidToken() {
+            const auth = getStoredAuth();
+            if (!auth) return false;
+            if (isAccessTokenValid(auth)) return true;
+            if (isRefreshTokenValid(auth)) return await refreshAccessToken();
+            clearAuth();
+            showLoginScreen();
+            return false;
+        }
+
+        async function handleLogin(event) {
+            event.preventDefault();
+            const email = document.getElementById('loginEmail').value.trim();
+            const password = document.getElementById('loginPassword').value;
+            const loginBtn = document.getElementById('loginBtn');
+            const loginError = document.getElementById('loginError');
+
+            loginError.classList.remove('visible');
+            loginBtn.disabled = true;
+            loginBtn.innerHTML = '<span class="spinner"></span> Signing in\u2026';
+
+            try {
+                const res = await fetch(AUTH_LOGIN_URL, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        requested_user_roles: ['ROLE_CUSTOMER'],
+                        email: email,
+                        password: password
+                    })
+                });
+
+                if (!res.ok) {
+                    const status = res.status;
+                    let msg = 'Login failed';
+                    if (status === 401 || status === 403) msg = 'Invalid email or password';
+                    else if (status === 429) msg = 'Too many attempts. Please try again later.';
+                    else msg = 'Login failed (HTTP ' + status + ')';
+                    throw new Error(msg);
+                }
+
+                const data = await res.json();
+                storeAuth(data);
+                scheduleTokenRefresh();
+                showAppScreen();
+            } catch (e) {
+                loginError.textContent = e.message;
+                loginError.classList.add('visible');
+            } finally {
+                loginBtn.disabled = false;
+                loginBtn.innerHTML = 'Sign In';
+            }
+        }
+
+        function handleLogout() {
+            clearAuth();
+            showLoginScreen();
+        }
+
+        function showLoginScreen() {
+            document.getElementById('loginOverlay').classList.remove('hidden');
+            document.getElementById('appContent').classList.add('hidden');
+        }
+
+        function showAppScreen() {
+            document.getElementById('loginOverlay').classList.add('hidden');
+            document.getElementById('appContent').classList.remove('hidden');
+            // Initialize app on first show
+            readFromUrl();
+            updateTrackFill();
+            render();
+            syncToUrl();
+        }
+
+        function initAuth() {
+            const auth = getStoredAuth();
+            if (auth && (isAccessTokenValid(auth) || isRefreshTokenValid(auth))) {
+                scheduleTokenRefresh();
+                showAppScreen();
+            } else {
+                clearAuth();
+                showLoginScreen();
+            }
+        }
+
+        // ========================
+        // THEME MODULE
+        // ========================
+        let currentTheme = 'auto'; // 'auto', 'light', 'dark'
+
+        function getEffectiveTheme() {
+            if (currentTheme !== 'auto') return currentTheme;
+            return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+        }
+
+        function applyTheme() {
+            const effective = getEffectiveTheme();
+            document.documentElement.setAttribute('data-theme', effective);
+            const toggle = document.getElementById('themeToggle');
+            if (toggle) toggle.textContent = effective === 'dark' ? '\u2600\uFE0F' : '\uD83C\uDF19';
+        }
+
+        function toggleTheme() {
+            const effective = getEffectiveTheme();
+            currentTheme = effective === 'dark' ? 'light' : 'dark';
+            applyTheme();
+            localStorage.setItem('theme', currentTheme);
+        }
+
+        function initTheme() {
+            const saved = localStorage.getItem('theme');
+            if (saved === 'light' || saved === 'dark') {
+                currentTheme = saved;
+            }
+            applyTheme();
+            window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => {
+                if (currentTheme === 'auto') applyTheme();
+            });
+        }
+
+        initTheme();
+
+
+        const CLUBS = [
+            { id: '6c596ac6-de86-412b-8c0d-40cb8a7dbaee', name: 'mitte — highline | flingern' },
+            { id: '2cb6322d-e37b-4fa4-80f0-903bce84a74a', name: 'mitte — bøhler | meerbusch' }
+            // { id: '309e8c87-d6f8-44fd-bf0b-08b77a2ce421', name: 'Sportmühle Hilden' }
+        ];
+
+        const DAY_NAMES = ['SUNDAY', 'MONDAY', 'TUESDAY', 'WEDNESDAY', 'THURSDAY', 'FRIDAY', 'SATURDAY'];
+
+        let currentDate = new Date();
+        currentDate.setUTCHours(0, 0, 0, 0);
+
+        const TIME_RANGES = {
+            morning: { start: 6, end: 12 },
+            afternoon: { start: 12, end: 18 },
+            evening: { start: 18, end: 24 }
+        };
+        let activeTimeFilters = new Set(['evening']);
+
+        function setTimeFilter(name) {
+            if (activeTimeFilters.has(name)) {
+                if (activeTimeFilters.size > 1) activeTimeFilters.delete(name);
+            } else {
+                activeTimeFilters.add(name);
+            }
+            updateTimeFilterUI();
+            displayMatches();
+            syncToUrl();
+        }
+
+        function updateTimeFilterUI() {
+            document.querySelectorAll('#timeFilter button').forEach(btn => {
+                btn.classList.toggle('active', activeTimeFilters.has(btn.dataset.time));
+            });
+        }
+
+        let activeDurationFilters = new Set(['90', '120']);
+
+        function setDurationFilter(name) {
+            if (activeDurationFilters.has(name)) {
+                if (activeDurationFilters.size > 1) activeDurationFilters.delete(name);
+            } else {
+                activeDurationFilters.add(name);
+            }
+            updateDurationFilterUI();
+            displayMatches();
+            syncToUrl();
+        }
+
+        function updateDurationFilterUI() {
+            document.querySelectorAll('#durationFilter button').forEach(btn => {
+                btn.classList.toggle('active', activeDurationFilters.has(btn.dataset.dur));
+            });
+        }
+
+        function syncToUrl() {
+            const params = new URLSearchParams();
+            params.set('date', toISODate(currentDate));
+            params.set('level', document.getElementById('myLevel').value);
+            params.set('min', document.getElementById('minLevel').value);
+            params.set('max', document.getElementById('maxLevel').value);
+            params.set('time', Array.from(activeTimeFilters).join(','));
+            params.set('dur', Array.from(activeDurationFilters).join(','));
+            history.replaceState(null, '', '?' + params.toString());
+        }
+
+        function readFromUrl() {
+            const params = new URLSearchParams(location.search);
+            const today = new Date();
+            today.setUTCHours(0, 0, 0, 0);
+
+            if (params.has('date')) {
+                const parts = params.get('date').split('-');
+                if (parts.length === 3) {
+                    const d = new Date(Date.UTC(parts[0], parts[1] - 1, parts[2]));
+                    if (d >= today) currentDate = d;
+                }
+            }
+
+            const level = params.has('level') ? parseFloat(params.get('level')) : 1.50;
+            const min = params.has('min') ? parseFloat(params.get('min')) : 0;
+            const max = params.has('max') ? parseFloat(params.get('max')) : Math.min(level + 3, 6);
+
+            document.getElementById('myLevel').value = level;
+            document.getElementById('myLevelDisplay').textContent = level.toFixed(2);
+            document.getElementById('minLevel').value = min;
+            document.getElementById('minLevelDisplay').textContent = min.toFixed(2);
+            document.getElementById('maxLevel').value = max;
+            document.getElementById('maxLevelDisplay').textContent = max.toFixed(2);
+
+            if (params.has('time')) {
+                const times = params.get('time').split(',').filter(t => TIME_RANGES[t]);
+                if (times.length > 0) {
+                    activeTimeFilters = new Set(times);
+                    updateTimeFilterUI();
+                }
+            }
+
+            if (params.has('dur')) {
+                const durs = params.get('dur').split(',').filter(d => ['60', '90', '120'].includes(d));
+                if (durs.length > 0) {
+                    activeDurationFilters = new Set(durs);
+                    updateDurationFilterUI();
+                }
+            }
+        }
+
+        function pad(n) { return String(n).padStart(2, '0'); }
+
+        function toISODate(d) {
+            return d.getUTCFullYear() + '-' + pad(d.getUTCMonth() + 1) + '-' + pad(d.getUTCDate());
+        }
+
+        function formatDisplayDate(d) {
+            return d.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', timeZone: 'UTC' });
+        }
+
+        function changeDate(delta) {
+            const next = new Date(currentDate);
+            next.setUTCDate(next.getUTCDate() + delta);
+            const today = new Date();
+            today.setUTCHours(0, 0, 0, 0);
+            if (next < today) return;
+            currentDate = next;
+            render();
+            syncToUrl();
+        }
+
+        function onDatePick(value) {
+            if (!value) return;
+            const parts = value.split('-');
+            currentDate = new Date(Date.UTC(parts[0], parts[1] - 1, parts[2]));
+            render();
+            syncToUrl();
+        }
+
+        function openDatePicker() {
+            const input = document.getElementById('dateInput');
+            const today = new Date();
+            input.min = today.getUTCFullYear() + '-' + pad(today.getUTCMonth() + 1) + '-' + pad(today.getUTCDate());
+            input.value = toISODate(currentDate);
+            input.showPicker();
+        }
+
+        let debounceTimer = null;
+        function onLevelChange() {
+            const level = parseFloat(document.getElementById('myLevel').value);
+            document.getElementById('myLevelDisplay').textContent = level.toFixed(2);
+            const newMax = Math.min(level + 3, 6);
+            const maxEl = document.getElementById('maxLevel');
+            maxEl.value = newMax;
+            document.getElementById('maxLevelDisplay').textContent = newMax.toFixed(2);
+            const minEl = document.getElementById('minLevel');
+            if (parseFloat(minEl.value) > newMax) {
+                minEl.value = newMax;
+                document.getElementById('minLevelDisplay').textContent = newMax.toFixed(2);
+            }
+            updateTrackFill();
+            clearTimeout(debounceTimer);
+            debounceTimer = setTimeout(() => { render(); syncToUrl(); }, 400);
+        }
+
+        function onRangeChange(which) {
+            const minEl = document.getElementById('minLevel');
+            const maxEl = document.getElementById('maxLevel');
+            let minVal = parseFloat(minEl.value);
+            let maxVal = parseFloat(maxEl.value);
+            if (which === 'min' && minVal > maxVal) { minEl.value = maxVal; minVal = maxVal; }
+            if (which === 'max' && maxVal < minVal) { maxEl.value = minVal; maxVal = minVal; }
+            document.getElementById('minLevelDisplay').textContent = minVal.toFixed(2);
+            document.getElementById('maxLevelDisplay').textContent = maxVal.toFixed(2);
+            updateTrackFill();
+            clearTimeout(debounceTimer);
+            debounceTimer = setTimeout(() => { render(); syncToUrl(); }, 400);
+        }
+
+        function updateTrackFill() {
+            const minVal = parseFloat(document.getElementById('minLevel').value);
+            const maxVal = parseFloat(document.getElementById('maxLevel').value);
+            const fill = document.getElementById('trackFill');
+            const pctMin = (minVal / 6) * 100;
+            const pctMax = (maxVal / 6) * 100;
+            fill.style.left = pctMin + '%';
+            fill.style.width = (pctMax - pctMin) + '%';
+        }
+
+        function buildUrl(extraParams) {
+            const dateStr = toISODate(currentDate);
+            const dayName = DAY_NAMES[currentDate.getUTCDay()];
+            const now = new Date();
+            const createdAt = now.getUTCFullYear() + '-' + pad(now.getUTCMonth() + 1) + '-' + pad(now.getUTCDate())
+                + 'T' + pad(now.getUTCHours()) + ':' + pad(now.getUTCMinutes()) + ':' + pad(now.getUTCSeconds());
+            const allTenantIds = CLUBS.map(c => c.id).join(',');
+            const forLevel = document.getElementById('myLevel').value;
+
+            const base = {
+                available_places: 'true',
+                coordinate: '51.238527,6.7319286',
+                for_level: forLevel,
+                for_local_start_day: dateStr,
+                gender: '',
+                has_players: 'true',
+                include_published_bookings: 'true',
+                match_status: 'PENDING',
+                page: '0',
+                radius: '15000',
+                resource_properties: '',
+                show_playtomic_courts_only: 'false',
+                size: '50',
+                sort: 'isPremium,startDate,availablePlaces,distance,ASC',
+                sport_id: 'PADEL',
+                tenant_id: allTenantIds,
+                time_ranges: dayName + '-00:00:00-23:59:59',
+                to_created_at: createdAt,
+                user_id: 'me',
+                visibility: 'VISIBLE'
+            };
+            Object.assign(base, extraParams || {});
+            return API_BASE + '/v1/matches_wizard?' + new URLSearchParams(base).toString();
+        }
+
+        const fetchCache = {};
+
+        function getAuthHeaders() {
+            const auth = getStoredAuth();
+            if (auth && auth.access_token) {
+                return { 'Authorization': 'Bearer ' + auth.access_token };
+            }
+            return {};
+        }
+
+        async function fetchUrl(url) {
+            const cacheKey = new URL(url);
+            cacheKey.searchParams.delete('to_created_at');
+            const key = cacheKey.toString();
+            if (fetchCache[key]) return fetchCache[key];
+
+            // Ensure we have a valid token before making API calls
+            await ensureValidToken();
+
+            const res = await fetch(url, { headers: getAuthHeaders() });
+            if (res.status === 401) {
+                // Token may have been invalidated server-side, try refreshing
+                const refreshed = await refreshAccessToken();
+                if (refreshed) {
+                    const res2 = await fetch(url, { headers: getAuthHeaders() });
+                    if (!res2.ok) throw new Error('HTTP ' + res2.status);
+                    const data = await res2.json();
+                    fetchCache[key] = data;
+                    return data;
+                }
+                throw new Error('Authentication expired. Please log in again.');
+            }
+            if (!res.ok) throw new Error('HTTP ' + res.status);
+            const data = await res.json();
+            fetchCache[key] = data;
+            return data;
+        }
+
+        async function fetchAllMatches() {
+            const [inLevel, outsideLevel] = await Promise.all([
+                fetchUrl(buildUrl()),
+                fetchUrl(buildUrl({
+                    outside_max_level: document.getElementById('maxLevel').value,
+                    outside_min_level: document.getElementById('minLevel').value,
+                    show_outside_player_level_only: 'true'
+                }))
+            ]);
+            // Deduplicate by match_id and sort by start_date ASC
+            const seen = new Set();
+            const all = [];
+            for (const m of [...inLevel, ...outsideLevel]) {
+                if (!seen.has(m.match_id)) {
+                    seen.add(m.match_id);
+                    all.push(m);
+                }
+            }
+            all.sort((a, b) => a.start_date.localeCompare(b.start_date));
+            return all;
+        }
+
+        function utcToLocal(isoStr, tz) {
+            // API returns UTC datetimes like "2026-04-26T16:30:00" — treat as UTC
+            const d = new Date(isoStr + 'Z');
+            return d.toLocaleTimeString('de-DE', { timeZone: tz, hour: '2-digit', minute: '2-digit', hour12: false });
+        }
+
+        function getTimezone(match) {
+            try { return match.tenant.address.timezone; } catch (_) { return 'Europe/Berlin'; }
+        }
+
+        function spotsInfo(match) {
+            let total = 0, filled = 0;
+            for (const t of match.teams) {
+                total += t.max_players;
+                filled += t.players.length;
+            }
+            return { total, filled, available: total - filled };
+        }
+
+        function esc(s) {
+            const el = document.createElement('span');
+            el.textContent = s;
+            return el.innerHTML;
+        }
+
+        function formatPrice(price) {
+            if (!price) return 'Free';
+            const match = price.match(/([\d.]+)\s*(\w+)/);
+            if (!match) return price;
+            const num = parseFloat(match[1]);
+            const currency = match[2];
+            const symbol = currency === 'EUR' ? '\u20AC' : currency;
+            const formatted = num % 1 === 0 ? String(Math.round(num)) : num.toFixed(2).replace('.', ',');
+            return formatted + ' ' + symbol;
+        }
+
+        function renderMatchCard(m) {
+            const spots = spotsInfo(m);
+            const full = spots.available === 0;
+            const players = m.teams.flatMap(t => t.players);
+
+            let tags = '';
+            const rp = m.resource_properties;
+            if (rp) {
+                [rp.resource_type, rp.resource_size, rp.resource_feature].filter(Boolean).forEach(t => {
+                    tags += '<span class="tag">' + esc(t) + '</span>';
+                });
+            }
+
+            let playersHtml = '';
+            players.forEach(p => {
+                const u = usersData[p.user_id];
+                const avatarUrl = u && u.picture;
+                const avatar = avatarUrl
+                    ? '<img class="player-avatar" src="' + esc(avatarUrl) + '" alt="">'
+                    : '<span class="player-avatar-placeholder">\u{1F464}</span>';
+                playersHtml += '<div class="player-row">'
+                    + avatar
+                    + '<span>' + esc(p.name || 'Player') + '</span>'
+                    + '<span class="player-level">Lvl ' + (p.level_value != null ? p.level_value.toFixed(2) : '?') + '</span>'
+                    + '</div>';
+            });
+            for (let i = 0; i < spots.available; i++) {
+                playersHtml += '<div class="player-row empty">\u2795 Open spot</div>';
+            }
+
+            const levelRange = (m.min_level != null && m.max_level != null)
+                ? '\u{1F4CA} ' + m.min_level.toFixed(1) + ' \u2013 ' + m.max_level.toFixed(1) : '';
+
+            const resourceText = m.resource_name ? '\u{1F3DF}\uFE0F ' + esc(m.resource_name) : '';
+
+            const matchType = m.competition_mode === 'COMPETITIVE' ? 'Competitive' : 'Friendly';
+            const matchTypeClass = m.competition_mode === 'COMPETITIVE' ? 'type-competitive' : 'type-friendly';
+
+            const duration = Math.round((new Date(m.end_date + 'Z') - new Date(m.start_date + 'Z')) / 60000);
+
+            const tz = getTimezone(m);
+            const priceStr = formatPrice(m.price);
+
+            return '<div class="match-card' + (full ? ' full' : '') + '">'
+                + '<div class="match-time"><span>' + utcToLocal(m.start_date, tz) + ' \u2013 ' + utcToLocal(m.end_date, tz) + '</span><span class="match-price">' + esc(priceStr) + '</span></div>'
+                + '<div class="match-tags">' + tags + '<span class="spacer"></span><span class="tag tag-duration">' + duration + ' min</span></div>'
+                + '<div class="match-meta">'
+                + '<span class="match-level">' + esc(levelRange) + (resourceText ? ' &middot; ' + resourceText : '') + '</span>'
+                + '<span class="match-type ' + matchTypeClass + '">' + esc(matchType) + '</span>'
+                + '</div>'
+                + '<div class="players-list">' + playersHtml + '</div>'
+                + '<div class="spots-summary">'
+                + '<span>' + (spots.available > 0
+                    ? '<span class="avail">' + spots.available + ' spot' + (spots.available > 1 ? 's' : '') + ' available</span> / ' + spots.total + ' total'
+                    : 'Full') + '</span>'
+                + '<a class="match-link" href="https://api.app.playtomic.io/matches/' + encodeURIComponent(m.match_id) + '" target="_blank" rel="noopener">Join \u2197</a>'
+                + '</div>'
+                + '</div>';
+        }
+
+        function renderClubSection(club, matches, error) {
+            let body;
+            if (error) {
+                body = '<div class="error-msg">Failed to load matches: ' + esc(error)
+                    + '<div class="hint">If blocked by CORS, try opening this page via a local server or using a browser extension.</div>'
+                    + '</div>';
+            } else if (matches.length === 0) {
+                body = '<div class="no-matches">No matches found for this date</div>';
+            } else {
+                body = '<div class="matches-grid">' + matches.map(renderMatchCard).join('') + '</div>';
+            }
+
+            const addr = (matches.length > 0 && matches[0].tenant && matches[0].tenant.address)
+                ? matches[0].tenant.address.street + ', ' + matches[0].tenant.address.city
+                : '';
+
+            return '<div class="club-section">'
+                + '<div class="club-header">'
+                + '<span>\u{1F4CD} ' + esc(club.name) + '</span>'
+                + (addr ? '<span class="address">' + esc(addr) + '</span>' : '')
+                + '</div>'
+                + body
+                + '</div>';
+        }
+
+        function filterMatchesByTime(matches) {
+            return matches.filter(m => {
+                const tz = getTimezone(m);
+                const d = new Date(m.start_date + 'Z');
+                const hour = parseInt(d.toLocaleTimeString('en-US', { timeZone: tz, hour: 'numeric', hour12: false }), 10);
+                for (const name of activeTimeFilters) {
+                    const r = TIME_RANGES[name];
+                    if (hour >= r.start && hour < r.end) return true;
+                }
+                return false;
+            });
+        }
+
+        function filterMatchesByDuration(matches) {
+            return matches.filter(m => {
+                const start = new Date(m.start_date + 'Z');
+                const end = new Date(m.end_date + 'Z');
+                const mins = Math.round((end - start) / 60000);
+                return activeDurationFilters.has(String(mins));
+            });
+        }
+
+        let lastFetchedMatches = [];
+        let lastFetchError = null;
+        let usersData = {};
+
+        async function fetchUsersData(matches) {
+            const userIds = new Set();
+            for (const m of matches) {
+                for (const t of m.teams) {
+                    for (const p of t.players) {
+                        if (p.user_id && !usersData[p.user_id]) userIds.add(p.user_id);
+                    }
+                }
+            }
+            if (userIds.size === 0) return;
+            try {
+                const ids = Array.from(userIds).join(',');
+                const data = await fetchUrl(API_BASE + '/v2/users?user_id=' + encodeURIComponent(ids));
+                if (Array.isArray(data)) {
+                    for (const u of data) {
+                        if (u.user_id) usersData[u.user_id] = u;
+                    }
+                }
+            } catch (e) {
+                console.warn('Failed to fetch user data:', e);
+            }
+        }
+
+        function displayMatches() {
+            const content = document.getElementById('content');
+            const filtered = filterMatchesByDuration(filterMatchesByTime(lastFetchedMatches));
+            const matchesByTenant = {};
+            for (const m of filtered) {
+                const tid = m.tenant ? m.tenant.tenant_id : 'unknown';
+                if (!matchesByTenant[tid]) matchesByTenant[tid] = [];
+                matchesByTenant[tid].push(m);
+            }
+            const results = CLUBS.map(club => ({
+                club,
+                matches: matchesByTenant[club.id] || [],
+                error: lastFetchError
+            }));
+            content.innerHTML = results.map(r => renderClubSection(r.club, r.matches, r.error)).join('');
+        }
+
+        async function render() {
+            document.getElementById('dateText').textContent = formatDisplayDate(currentDate);
+            document.getElementById('dateInput').value = toISODate(currentDate);
+            const content = document.getElementById('content');
+            content.innerHTML = '<div class="loading">Loading matches\u2026</div>';
+
+            let allMatches = [];
+            let fetchError = null;
+            try {
+                allMatches = await fetchAllMatches();
+                await fetchUsersData(allMatches);
+            } catch (e) {
+                fetchError = e.message;
+            }
+
+            lastFetchedMatches = allMatches;
+            lastFetchError = fetchError;
+            displayMatches();
+        }
+
+        // Boot: check auth state and show appropriate screen
+        initAuth();
+    </script>
+</body>
+
+</html>
