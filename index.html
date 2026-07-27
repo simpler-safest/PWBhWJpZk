@@ -640,20 +640,32 @@
         }
 
         /* Theme Toggle */
+        .title-row {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 12px;
+        }
+
+        .title-row h1 {
+            margin: 0;
+            flex: 1;
+        }
+
         .theme-toggle {
-            margin-left: auto;
             background: var(--card-bg);
             border: none;
-            width: 36px;
-            height: 36px;
+            width: 32px;
+            height: 32px;
             border-radius: 50%;
             box-shadow: 0 1px 3px var(--card-shadow);
             cursor: pointer;
-            font-size: 18px;
+            font-size: 16px;
             display: flex;
             align-items: center;
             justify-content: center;
             transition: background .15s;
+            flex-shrink: 0;
         }
 
         .theme-toggle:hover {
@@ -851,16 +863,17 @@
             background: var(--card-bg);
             border: 1px solid var(--error);
             color: var(--error);
-            padding: 0 14px;
-            height: 36px;
-            border-radius: 8px;
-            font-size: 12px;
+            padding: 0 10px;
+            height: 28px;
+            border-radius: 6px;
+            font-size: 11px;
             font-weight: 600;
             cursor: pointer;
             display: flex;
             align-items: center;
-            gap: 5px;
+            gap: 4px;
             transition: background 0.15s, color 0.15s;
+            flex-shrink: 0;
         }
 
         .logout-btn:hover {
@@ -904,7 +917,12 @@
     <!-- App Content -->
     <div class="app-content hidden" id="appContent">
         <div class="container">
-            <h1>Padel Match Finder</h1>
+            <div class="title-row">
+                <h1>Padel Match Finder</h1>
+                <button class="logout-btn" onclick="handleLogout()" aria-label="Sign out">⏻ Sign Out</button>
+                <button class="theme-toggle" id="themeToggle" onclick="toggleTheme()"
+                    aria-label="Toggle dark mode"></button>
+            </div>
 
             <div class="toolbar">
                 <div class="date-picker">
@@ -948,9 +966,6 @@
                     <button data-dur="90" onclick="setDurationFilter('90')" class="active">90 min</button>
                     <button data-dur="120" onclick="setDurationFilter('120')" class="active">120 min</button>
                 </div>
-                <button class="logout-btn" onclick="handleLogout()" aria-label="Sign out">⏻ Sign Out</button>
-                <button class="theme-toggle" id="themeToggle" onclick="toggleTheme()"
-                    aria-label="Toggle dark mode"></button>
             </div>
 
             <div id="content"></div>
@@ -965,7 +980,7 @@
         // ========================
         const AUTH_STORAGE_KEY = 'playtomic_auth';
         const AUTH_LOGIN_URL = API_BASE + '/v3/auth/login';
-        const AUTH_REFRESH_URL = API_BASE + '/v3/auth/token/refresh';
+        const AUTH_REFRESH_URL = API_BASE + '/v3/auth/token';
         const TOKEN_REFRESH_MARGIN_MS = 5 * 60 * 1000; // refresh 5 min before expiry
         let refreshTimerHandle = null;
 
@@ -1019,7 +1034,7 @@
                 const res = await fetch(AUTH_REFRESH_URL, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ refresh_token: auth.refresh_token })
+                    body: JSON.stringify({ refresh_token: auth.refresh_token, requested_user_roles: ['ROLE_CUSTOMER'] })
                 });
                 if (!res.ok) {
                     console.warn('Token refresh failed: HTTP ' + res.status);
@@ -1187,7 +1202,8 @@
 
         const CLUBS = [
             { id: '6c596ac6-de86-412b-8c0d-40cb8a7dbaee', name: 'mitte — highline | flingern' },
-            { id: '2cb6322d-e37b-4fa4-80f0-903bce84a74a', name: 'mitte — bøhler | meerbusch' }
+            { id: '2cb6322d-e37b-4fa4-80f0-903bce84a74a', name: 'mitte — bøhler | meerbusch' },
+            { id: '11084c81-8fe3-4bc7-be1f-b60aa28a2ca0', name: 'The Cube Padel | Köln' }
             // { id: '309e8c87-d6f8-44fd-bf0b-08b77a2ce421', name: 'Sportmühle Hilden' }
         ];
 
@@ -1536,6 +1552,8 @@
 
             const resourceText = m.resource_name ? '\u{1F3DF}\uFE0F ' + esc(m.resource_name) : '';
 
+            const genderEmoji = m.gender === 'MALE' ? ' ♂' : m.gender === 'FEMALE' ? ' ♀' : '';
+
             const matchType = m.competition_mode === 'COMPETITIVE' ? 'Competitive' : 'Friendly';
             const matchTypeClass = m.competition_mode === 'COMPETITIVE' ? 'type-competitive' : 'type-friendly';
 
@@ -1548,7 +1566,7 @@
                 + '<div class="match-time"><span>' + utcToLocal(m.start_date, tz) + ' \u2013 ' + utcToLocal(m.end_date, tz) + '</span><span class="match-price">' + esc(priceStr) + '</span></div>'
                 + '<div class="match-tags">' + tags + '<span class="spacer"></span><span class="tag tag-duration">' + duration + ' min</span></div>'
                 + '<div class="match-meta">'
-                + '<span class="match-level">' + esc(levelRange) + (resourceText ? ' &middot; ' + resourceText : '') + '</span>'
+                + '<span class="match-level">' + esc(levelRange) + (resourceText ? ' &middot; ' + resourceText : '') + genderEmoji + '</span>'
                 + '<span class="match-type ' + matchTypeClass + '">' + esc(matchType) + '</span>'
                 + '</div>'
                 + '<div class="players-list">' + playersHtml + '</div>'
