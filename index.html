@@ -29,6 +29,7 @@
             --green: #22c55e;
             --error: #dc2626;
             --address: #777;
+            --ctrl-h: 36px;
         }
 
         [data-theme="dark"] {
@@ -82,62 +83,56 @@
             margin-bottom: 20px;
         }
 
-        /* Date Picker */
+        /* Toolbar */
         .toolbar {
             display: flex;
             flex-wrap: wrap;
             align-items: center;
-            gap: 12px;
+            gap: 8px;
             position: sticky;
             top: 0;
             z-index: 10;
             background: var(--bg);
-            padding: 12px 0;
-            margin-bottom: 12px;
+            padding: 10px 0;
+            margin-bottom: 8px;
         }
 
         .date-picker {
             display: inline-flex;
             align-items: center;
-            gap: 10px;
+            gap: 2px;
             background: var(--card-bg);
-            padding: 0 16px;
-            height: 44px;
+            padding: 0 6px;
+            height: var(--ctrl-h);
             border-radius: 8px;
             box-shadow: 0 1px 3px var(--card-shadow);
             user-select: none;
         }
 
-        .date-picker .sport-label {
-            font-weight: 600;
-            font-size: 14px;
-            padding-right: 10px;
-            border-right: 1px solid var(--border);
-        }
-
         .date-picker button {
             background: none;
-            border: 1px solid var(--btn-border);
-            border-radius: 50%;
+            border: none;
+            border-radius: 6px;
             width: 28px;
             height: 28px;
             cursor: pointer;
             display: flex;
             align-items: center;
             justify-content: center;
-            font-size: 14px;
-            color: var(--btn-text);
-            transition: background .15s;
+            font-size: 17px;
+            color: var(--muted);
+            transition: background .15s, color .15s;
         }
 
         .date-picker button:hover {
-            background: var(--btn-hover);
+            background: var(--filter-hover);
+            color: var(--text);
         }
 
         .date-display {
             font-weight: 600;
-            font-size: 15px;
-            min-width: 130px;
+            font-size: 14px;
+            min-width: 104px;
             text-align: center;
             cursor: pointer;
         }
@@ -158,40 +153,44 @@
         .level-stack {
             display: flex;
             flex-direction: column;
-            gap: 4px;
+            justify-content: center;
+            gap: 5px;
+            height: var(--ctrl-h);
+            background: var(--card-bg);
+            padding: 0 10px;
+            border-radius: 8px;
+            box-shadow: 0 1px 3px var(--card-shadow);
         }
 
         .level-control {
-            display: inline-flex;
+            display: flex;
             align-items: center;
             gap: 8px;
-            background: var(--card-bg);
-            padding: 0 12px;
-            height: 20px;
-            border-radius: 5px;
-            box-shadow: 0 1px 3px var(--card-shadow);
+            height: 13px;
         }
 
         .level-control label {
             font-weight: 600;
-            font-size: 12px;
+            font-size: 11px;
             color: var(--muted);
             white-space: nowrap;
+            width: 50px;
         }
 
         .level-control .value-display {
-            font-size: 11px;
+            font-size: 10px;
             font-weight: 700;
             color: var(--text);
-            min-width: 26px;
+            width: 58px;
             text-align: center;
+            font-variant-numeric: tabular-nums;
         }
 
         .level-control input[type=range] {
-            width: 80px;
+            width: 96px;
             -webkit-appearance: none;
             appearance: none;
-            background: #e2e8f0;
+            background: var(--track-bg);
             height: 4px;
             border-radius: 2px;
             outline: none;
@@ -236,7 +235,7 @@
 
         .dual-range {
             position: relative;
-            width: 80px;
+            width: 96px;
             height: 16px;
         }
 
@@ -567,121 +566,75 @@
             font-style: italic;
         }
 
-        /* Time Filter */
-        .time-filter {
+        /* Segmented filter controls (time / duration / gender) */
+        .seg {
             display: inline-flex;
-            align-items: center;
-            gap: 0;
+            align-items: stretch;
+            height: var(--ctrl-h);
             background: var(--card-bg);
-            padding: 0;
-            height: 44px;
             border-radius: 8px;
             box-shadow: 0 1px 3px var(--card-shadow);
             overflow: hidden;
         }
 
-        .time-filter button {
+        .seg button {
             border: none;
             background: none;
-            padding: 0 14px;
-            height: 100%;
+            padding: 0 13px;
             font-size: 12px;
             font-weight: 600;
             color: var(--muted);
             cursor: pointer;
             transition: background .15s, color .15s;
             white-space: nowrap;
-        }
-
-        .time-filter button:hover {
-            background: var(--filter-hover);
-        }
-
-        .time-filter button.active {
-            background: var(--accent);
-            color: #fff;
-        }
-
-        .time-filter button+button {
-            border-left: 1px solid var(--border-light);
-        }
-
-        /* Duration Filter */
-        .duration-filter {
             display: inline-flex;
             align-items: center;
-            gap: 0;
-            background: var(--card-bg);
-            padding: 0;
-            height: 44px;
-            border-radius: 8px;
-            box-shadow: 0 1px 3px var(--card-shadow);
-            overflow: hidden;
+            justify-content: center;
         }
 
-        .duration-filter button {
-            border: none;
-            background: none;
-            padding: 0 14px;
-            height: 100%;
-            font-size: 12px;
-            font-weight: 600;
-            color: var(--muted);
-            cursor: pointer;
-            transition: background .15s, color .15s;
-            white-space: nowrap;
+        .seg button+button {
+            border-left: 1px solid var(--border-light);
         }
 
-        .duration-filter button:hover {
+        .seg button:hover {
             background: var(--filter-hover);
         }
 
-        .duration-filter button.active {
+        .seg button.active {
             background: var(--accent);
             color: #fff;
         }
 
-        .duration-filter button+button {
-            border-left: 1px solid var(--border-light);
-        }
+        /* Compact, edge-to-edge toolbar controls on small screens */
+        @media (max-width: 640px) {
+            .toolbar {
+                gap: 6px;
+            }
 
-        /* Gender Filter */
-        .gender-filter {
-            display: inline-flex;
-            align-items: center;
-            gap: 0;
-            background: var(--card-bg);
-            padding: 0;
-            height: 44px;
-            border-radius: 8px;
-            box-shadow: 0 1px 3px var(--card-shadow);
-            overflow: hidden;
-        }
+            .date-picker,
+            .level-stack,
+            .seg {
+                width: 100%;
+            }
 
-        .gender-filter button {
-            border: none;
-            background: none;
-            padding: 0 14px;
-            height: 100%;
-            font-size: 12px;
-            font-weight: 600;
-            color: var(--muted);
-            cursor: pointer;
-            transition: background .15s, color .15s;
-            white-space: nowrap;
-        }
+            .seg {
+                display: flex;
+            }
 
-        .gender-filter button:hover {
-            background: var(--filter-hover);
-        }
+            .seg button {
+                flex: 1;
+                min-width: 0;
+            }
 
-        .gender-filter button.active {
-            background: var(--accent);
-            color: #fff;
-        }
+            .date-display {
+                flex: 1;
+            }
 
-        .gender-filter button+button {
-            border-left: 1px solid var(--border-light);
+            .level-control input[type=range],
+            .dual-range {
+                flex: 1;
+                width: auto;
+            }
         }
 
         /* Title Row + Hamburger Menu */
@@ -1040,7 +993,6 @@
 
             <div class="toolbar">
                 <div class="date-picker">
-                    <span class="sport-label">Padel</span>
                     <button onclick="changeDate(-1)" aria-label="Previous day">&#8249;</button>
                     <span class="date-display" id="dateDisplay" onclick="openDatePicker()">
                         <span id="dateText"></span>
@@ -1069,18 +1021,19 @@
                         </div>
                     </div>
                 </div>
-                <div class="time-filter" id="timeFilter">
-                    <button data-time="morning" onclick="setTimeFilter('morning')">Morning<br>06–12</button>
-                    <button data-time="afternoon" onclick="setTimeFilter('afternoon')">Afternoon<br>12–18</button>
-                    <button data-time="evening" onclick="setTimeFilter('evening')"
-                        class="active">Evening<br>18–24</button>
+                <div class="seg" id="timeFilter">
+                    <button data-time="morning" onclick="setTimeFilter('morning')" title="06:00–12:00">Morning</button>
+                    <button data-time="afternoon" onclick="setTimeFilter('afternoon')"
+                        title="12:00–18:00">Afternoon</button>
+                    <button data-time="evening" onclick="setTimeFilter('evening')" class="active"
+                        title="18:00–24:00">Evening</button>
                 </div>
-                <div class="duration-filter" id="durationFilter">
-                    <button data-dur="60" onclick="setDurationFilter('60')">60 min</button>
-                    <button data-dur="90" onclick="setDurationFilter('90')" class="active">90 min</button>
-                    <button data-dur="120" onclick="setDurationFilter('120')" class="active">120 min</button>
+                <div class="seg" id="durationFilter">
+                    <button data-dur="60" onclick="setDurationFilter('60')">60m</button>
+                    <button data-dur="90" onclick="setDurationFilter('90')" class="active">90m</button>
+                    <button data-dur="120" onclick="setDurationFilter('120')" class="active">120m</button>
                 </div>
-                <div class="gender-filter" id="genderFilter">
+                <div class="seg" id="genderFilter">
                     <button data-gender="female" onclick="setGenderFilter('female')" class="active">Female</button>
                     <button data-gender="male" onclick="setGenderFilter('male')" class="active">Male</button>
                     <button data-gender="mixed" onclick="setGenderFilter('mixed')" class="active">Mixed</button>
