@@ -87,7 +87,12 @@
             flex-wrap: wrap;
             align-items: center;
             gap: 12px;
-            margin-bottom: 24px;
+            position: sticky;
+            top: 0;
+            z-index: 10;
+            background: var(--bg);
+            padding: 12px 0;
+            margin-bottom: 12px;
         }
 
         .date-picker {
@@ -639,6 +644,45 @@
             border-left: 1px solid var(--border-light);
         }
 
+        /* Gender Filter */
+        .gender-filter {
+            display: inline-flex;
+            align-items: center;
+            gap: 0;
+            background: var(--card-bg);
+            padding: 0;
+            height: 44px;
+            border-radius: 8px;
+            box-shadow: 0 1px 3px var(--card-shadow);
+            overflow: hidden;
+        }
+
+        .gender-filter button {
+            border: none;
+            background: none;
+            padding: 0 14px;
+            height: 100%;
+            font-size: 12px;
+            font-weight: 600;
+            color: var(--muted);
+            cursor: pointer;
+            transition: background .15s, color .15s;
+            white-space: nowrap;
+        }
+
+        .gender-filter button:hover {
+            background: var(--filter-hover);
+        }
+
+        .gender-filter button.active {
+            background: var(--accent);
+            color: #fff;
+        }
+
+        .gender-filter button+button {
+            border-left: 1px solid var(--border-light);
+        }
+
         /* Theme Toggle */
         .title-row {
             display: flex;
@@ -888,6 +932,32 @@
         .app-content.hidden {
             display: none;
         }
+
+        /* Pull-to-refresh indicator */
+        .pull-indicator {
+            position: fixed;
+            top: 8px;
+            left: 50%;
+            width: 38px;
+            height: 38px;
+            margin-left: -19px;
+            border-radius: 50%;
+            background: var(--card-bg);
+            box-shadow: 0 2px 8px var(--card-shadow);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--accent);
+            font-size: 20px;
+            opacity: 0;
+            transform: translateY(-60px);
+            pointer-events: none;
+            z-index: 500;
+        }
+
+        .pull-indicator.refreshing .pull-icon {
+            animation: spin .6s linear infinite;
+        }
     </style>
 </head>
 
@@ -916,6 +986,7 @@
 
     <!-- App Content -->
     <div class="app-content hidden" id="appContent">
+        <div class="pull-indicator" id="pullIndicator"><span class="pull-icon">&#8635;</span></div>
         <div class="container">
             <div class="title-row">
                 <h1>Padel Match Finder</h1>
@@ -965,6 +1036,11 @@
                     <button data-dur="60" onclick="setDurationFilter('60')">60 min</button>
                     <button data-dur="90" onclick="setDurationFilter('90')" class="active">90 min</button>
                     <button data-dur="120" onclick="setDurationFilter('120')" class="active">120 min</button>
+                </div>
+                <div class="gender-filter" id="genderFilter">
+                    <button data-gender="female" onclick="setGenderFilter('female')" class="active">Female</button>
+                    <button data-gender="male" onclick="setGenderFilter('male')" class="active">Male</button>
+                    <button data-gender="mixed" onclick="setGenderFilter('mixed')" class="active">Mixed</button>
                 </div>
             </div>
 
@@ -1255,6 +1331,25 @@
             });
         }
 
+        let activeGenderFilters = new Set(['male', 'female', 'mixed']);
+
+        function setGenderFilter(name) {
+            if (activeGenderFilters.has(name)) {
+                if (activeGenderFilters.size > 1) activeGenderFilters.delete(name);
+            } else {
+                activeGenderFilters.add(name);
+            }
+            updateGenderFilterUI();
+            displayMatches();
+            syncToUrl();
+        }
+
+        function updateGenderFilterUI() {
+            document.querySelectorAll('#genderFilter button').forEach(btn => {
+                btn.classList.toggle('active', activeGenderFilters.has(btn.dataset.gender));
+            });
+        }
+
         function syncToUrl() {
             const params = new URLSearchParams();
             params.set('date', toISODate(currentDate));
@@ -1263,6 +1358,7 @@
             params.set('max', document.getElementById('maxLevel').value);
             params.set('time', Array.from(activeTimeFilters).join(','));
             params.set('dur', Array.from(activeDurationFilters).join(','));
+            params.set('gender', Array.from(activeGenderFilters).join(','));
             history.replaceState(null, '', '?' + params.toString());
         }
 
@@ -1303,6 +1399,14 @@
                 if (durs.length > 0) {
                     activeDurationFilters = new Set(durs);
                     updateDurationFilterUI();
+                }
+            }
+
+            if (params.has('gender')) {
+                const genders = params.get('gender').split(',').filter(g => ['male', 'female', 'mixed'].includes(g));
+                if (genders.length > 0) {
+                    activeGenderFilters = new Set(genders);
+                    updateGenderFilterUI();
                 }
             }
         }
@@ -1626,6 +1730,14 @@
             });
         }
 
+        function filterMatchesByGender(matches) {
+            return matches.filter(m => {
+                if (m.gender === 'MALE') return activeGenderFilters.has('male');
+                if (m.gender === 'FEMALE') return activeGenderFilters.has('female');
+                return activeGenderFilters.has('mixed');
+            });
+        }
+
         let lastFetchedMatches = [];
         let lastFetchError = null;
         let usersData = {};
@@ -1655,7 +1767,7 @@
 
         function displayMatches() {
             const content = document.getElementById('content');
-            const filtered = filterMatchesByDuration(filterMatchesByTime(lastFetchedMatches));
+            const filtered = filterMatchesByGender(filterMatchesByDuration(filterMatchesByTime(lastFetchedMatches)));
             const matchesByTenant = {};
             for (const m of filtered) {
                 const tid = m.tenant ? m.tenant.tenant_id : 'unknown';
@@ -1689,6 +1801,105 @@
             lastFetchError = fetchError;
             displayMatches();
         }
+
+        // ========================
+        // TOUCH GESTURES
+        // ========================
+        // Horizontal swipe changes the day; pull-down at top refreshes.
+        const SWIPE_THRESHOLD = 60;   // px of horizontal travel to change date
+        const PULL_THRESHOLD = 70;    // px of (damped) pull to trigger refresh
+        const PULL_MAX = 90;          // cap on how far the indicator travels
+
+        let gStartX = 0, gStartY = 0, gStartScroll = 0;
+        let gAxis = null;             // null | 'horizontal' | 'vertical' | 'ignore'
+        let gPulling = false;
+        let gRefreshing = false;
+
+        const pullIndicator = document.getElementById('pullIndicator');
+        const pullIcon = pullIndicator.querySelector('.pull-icon');
+
+        function setPull(dist) {
+            pullIndicator.style.transition = 'none';
+            pullIndicator.style.transform = 'translateY(' + (dist - 60) + 'px)';
+            pullIndicator.style.opacity = Math.min(dist / PULL_THRESHOLD, 1);
+            pullIcon.style.transform = 'rotate(' + Math.min(dist / PULL_THRESHOLD, 1) * 270 + 'deg)';
+        }
+
+        function resetPull() {
+            pullIndicator.style.transition = 'transform .25s ease, opacity .25s ease';
+            pullIndicator.style.transform = 'translateY(-60px)';
+            pullIndicator.style.opacity = '0';
+            pullIndicator.classList.remove('refreshing');
+            pullIcon.style.transform = '';
+        }
+
+        async function triggerRefresh() {
+            gRefreshing = true;
+            pullIndicator.style.transition = 'transform .2s ease';
+            pullIndicator.style.transform = 'translateY(0)';
+            pullIndicator.style.opacity = '1';
+            pullIndicator.classList.add('refreshing');
+            // Bypass caches so we actually pull fresh data
+            for (const k in fetchCache) delete fetchCache[k];
+            usersData = {};
+            try { await render(); } finally {
+                gRefreshing = false;
+                resetPull();
+            }
+        }
+
+        function onTouchStart(e) {
+            if (e.touches.length !== 1 || gRefreshing) { gAxis = 'ignore'; return; }
+            const t = e.touches[0];
+            // Ignore gestures that begin on interactive controls (sliders, buttons, links)
+            const el = e.target;
+            if (el && typeof el.closest === 'function' && el.closest('input, button, a, select, textarea')) {
+                gAxis = 'ignore';
+                return;
+            }
+            gStartX = t.clientX;
+            gStartY = t.clientY;
+            gStartScroll = window.scrollY || document.documentElement.scrollTop || 0;
+            gAxis = null;
+            gPulling = false;
+        }
+
+        function onTouchMove(e) {
+            if (gAxis === 'ignore' || e.touches.length !== 1) return;
+            const t = e.touches[0];
+            const dx = t.clientX - gStartX;
+            const dy = t.clientY - gStartY;
+            if (gAxis === null) {
+                if (Math.abs(dx) > 10 || Math.abs(dy) > 10) {
+                    gAxis = Math.abs(dx) > Math.abs(dy) ? 'horizontal' : 'vertical';
+                }
+            }
+            if (gAxis === 'vertical' && dy > 0 && gStartScroll <= 0) {
+                gPulling = true;
+                setPull(Math.min(dy * 0.5, PULL_MAX));
+                if (e.cancelable) e.preventDefault(); // suppress native overscroll while pulling
+            }
+        }
+
+        function onTouchEnd(e) {
+            if (gAxis === 'ignore') { gAxis = null; return; }
+            const t = e.changedTouches[0];
+            const dx = t.clientX - gStartX;
+            const dy = t.clientY - gStartY;
+            if (gAxis === 'horizontal' && Math.abs(dx) >= SWIPE_THRESHOLD) {
+                if (dx < 0) changeDate(1); else changeDate(-1);
+            } else if (gPulling) {
+                if (Math.min(dy * 0.5, PULL_MAX) >= PULL_THRESHOLD) triggerRefresh();
+                else resetPull();
+            }
+            gAxis = null;
+            gPulling = false;
+        }
+
+        document.addEventListener('touchstart', onTouchStart, { passive: true });
+        document.addEventListener('touchmove', onTouchMove, { passive: false });
+        document.addEventListener('touchend', onTouchEnd, { passive: true });
+        document.addEventListener('touchcancel', () => { if (!gRefreshing) resetPull(); gAxis = null; gPulling = false; }, { passive: true });
 
         // Boot: check auth state and show appropriate screen
         initAuth();
