@@ -1055,6 +1055,7 @@
         const AUTH_REFRESH_URL = API_BASE + '/v3/auth/token';
         const TOKEN_REFRESH_MARGIN_MS = 5 * 60 * 1000; // refresh 5 min before expiry
         let refreshTimerHandle = null;
+        let refreshPromise = null; // in-flight singleton refresh (dedupes concurrent refreshes)
 
         function getStoredAuth() {
             try {
@@ -1095,7 +1096,9 @@
             return Date.now() < exp;
         }
 
-        async function refreshAccessToken() {
+        // Performs the actual refresh network call. Never call directly — go through
+        // refreshAccessToken() so concurrent callers share a single request.
+        async function performTokenRefresh() {
             const auth = getStoredAuth();
             if (!auth || !isRefreshTokenValid(auth)) {
                 clearAuth();
@@ -1125,6 +1128,17 @@
                 showLoginScreen();
                 return false;
             }
+        }
+
+        // Singleton refresh: because the refresh token is single-use, concurrent
+        // callers (parallel requests, 401 retries, the scheduled timer) must all
+        // await the SAME in-flight refresh instead of each spending the token.
+        function refreshAccessToken() {
+            if (refreshPromise) return refreshPromise;
+            refreshPromise = performTokenRefresh().finally(() => {
+                refreshPromise = null;
+            });
+            return refreshPromise;
         }
 
         function scheduleTokenRefresh() {
