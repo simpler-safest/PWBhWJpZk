@@ -1004,7 +1004,7 @@
                     <div class="level-control">
                         <label>My Level</label>
                         <div class="value-display" id="myLevelDisplay">1.50</div>
-                        <input type="range" id="myLevel" min="0" max="6" step="0.01" value="1.50"
+                        <input type="range" id="myLevel" min="0" max="7" step="0.01" value="1.50"
                             oninput="onLevelChange()">
                     </div>
                     <div class="level-control">
@@ -1014,9 +1014,9 @@
                         <div class="dual-range">
                             <div class="track"></div>
                             <div class="track-fill" id="trackFill"></div>
-                            <input type="range" id="minLevel" min="0" max="6" step="0.10" value="0"
+                            <input type="range" id="minLevel" min="0" max="7" step="0.10" value="0"
                                 oninput="onRangeChange('min')">
-                            <input type="range" id="maxLevel" min="0" max="6" step="0.10" value="4.50"
+                            <input type="range" id="maxLevel" min="0" max="7" step="0.10" value="4.50"
                                 oninput="onRangeChange('max')">
                         </div>
                     </div>
@@ -1051,8 +1051,12 @@
         // AUTH MODULE
         // ========================
         const AUTH_STORAGE_KEY = 'playtomic_auth';
+        const LEVELS_STORAGE_KEY = 'playtomic_levels';
+        const USER_PROFILE_STORAGE_KEY = 'playtomic_user_profile';
         const AUTH_LOGIN_URL = API_BASE + '/v3/auth/login';
         const AUTH_REFRESH_URL = API_BASE + '/v3/auth/token';
+        const LEVELS_URL = API_BASE + '/v1/levels?user_id=me&with_history=true';
+        const USER_PROFILE_URL = API_BASE + '/v2/users/me';
         const TOKEN_REFRESH_MARGIN_MS = 5 * 60 * 1000; // refresh 5 min before expiry
         let refreshTimerHandle = null;
         let refreshPromise = null; // in-flight singleton refresh (dedupes concurrent refreshes)
@@ -1078,6 +1082,8 @@
 
         function clearAuth() {
             localStorage.removeItem(AUTH_STORAGE_KEY);
+            localStorage.removeItem(LEVELS_STORAGE_KEY);
+            localStorage.removeItem(USER_PROFILE_STORAGE_KEY);
             if (refreshTimerHandle) {
                 clearTimeout(refreshTimerHandle);
                 refreshTimerHandle = null;
@@ -1173,6 +1179,104 @@
             return false;
         }
 
+        // ========================
+        // USER LEVEL MODULE
+        // ========================
+        function getUserLevel() {
+            try {
+                const raw = localStorage.getItem(LEVELS_STORAGE_KEY);
+                if (!raw) return 1.50;
+                const levels = JSON.parse(raw);
+                if (Array.isArray(levels) && levels.length > 0 && levels[0].level_value != null) {
+                    return levels[0].level_value;
+                }
+            } catch (_) { }
+            return 1.50;
+        }
+
+        async function fetchUserLevel() {
+            try {
+                await ensureValidToken();
+                const auth = getStoredAuth();
+                if (!auth || !auth.access_token) return;
+                const res = await fetch(LEVELS_URL, {
+                    headers: { 'Authorization': 'Bearer ' + auth.access_token }
+                });
+                if (!res.ok) {
+                    console.warn('Failed to fetch user level: HTTP ' + res.status);
+                    return;
+                }
+                const data = await res.json();
+                localStorage.setItem(LEVELS_STORAGE_KEY, JSON.stringify(data));
+                applyUserLevel();
+            } catch (e) {
+                console.warn('Error fetching user level:', e);
+            }
+        }
+
+        function applyUserLevel() {
+            const level = getUserLevel();
+            const params = new URLSearchParams(location.search);
+            // Only apply if the URL doesn't already have a user-set level
+            if (!params.has('level')) {
+                document.getElementById('myLevel').value = level;
+                document.getElementById('myLevelDisplay').textContent = level.toFixed(2);
+                const newMax = Math.min(level + 3, 7);
+                document.getElementById('maxLevel').value = newMax;
+                document.getElementById('maxLevelDisplay').textContent = newMax.toFixed(2);
+                updateTrackFill();
+            }
+        }
+
+        // ========================
+        // USER PROFILE MODULE
+        // ========================
+        function getUserGender() {
+            try {
+                const raw = localStorage.getItem(USER_PROFILE_STORAGE_KEY);
+                if (!raw) return null;
+                const profile = JSON.parse(raw);
+                if (profile && profile.gender) return profile.gender;
+            } catch (_) { }
+            return null;
+        }
+
+        function getDefaultGenderFilters() {
+            const gender = getUserGender();
+            if (gender === 'MALE') return new Set(['male', 'mixed']);
+            if (gender === 'FEMALE') return new Set(['female', 'mixed']);
+            return new Set(['male', 'female', 'mixed']);
+        }
+
+        async function fetchUserProfile() {
+            try {
+                await ensureValidToken();
+                const auth = getStoredAuth();
+                if (!auth || !auth.access_token) return;
+                const res = await fetch(USER_PROFILE_URL, {
+                    headers: { 'Authorization': 'Bearer ' + auth.access_token }
+                });
+                if (!res.ok) {
+                    console.warn('Failed to fetch user profile: HTTP ' + res.status);
+                    return;
+                }
+                const data = await res.json();
+                localStorage.setItem(USER_PROFILE_STORAGE_KEY, JSON.stringify(data));
+                applyUserGender();
+            } catch (e) {
+                console.warn('Error fetching user profile:', e);
+            }
+        }
+
+        function applyUserGender() {
+            const params = new URLSearchParams(location.search);
+            // Only apply if the URL doesn't already have a user-set gender
+            if (!params.has('gender')) {
+                activeGenderFilters = getDefaultGenderFilters();
+                updateGenderFilterUI();
+            }
+        }
+
         async function handleLogin(event) {
             event.preventDefault();
             const email = document.getElementById('loginEmail').value.trim();
@@ -1207,6 +1311,7 @@
                 const data = await res.json();
                 storeAuth(data);
                 scheduleTokenRefresh();
+                await Promise.all([fetchUserLevel(), fetchUserProfile()]);
                 showAppScreen();
             } catch (e) {
                 loginError.textContent = e.message;
@@ -1238,10 +1343,11 @@
             syncToUrl();
         }
 
-        function initAuth() {
+        async function initAuth() {
             const auth = getStoredAuth();
             if (auth && (isAccessTokenValid(auth) || isRefreshTokenValid(auth))) {
                 scheduleTokenRefresh();
+                await Promise.all([fetchUserLevel(), fetchUserProfile()]);
                 showAppScreen();
             } else {
                 clearAuth();
@@ -1417,9 +1523,9 @@
                 }
             }
 
-            const level = params.has('level') ? parseFloat(params.get('level')) : 1.50;
+            const level = params.has('level') ? parseFloat(params.get('level')) : getUserLevel();
             const min = params.has('min') ? parseFloat(params.get('min')) : 0;
-            const max = params.has('max') ? parseFloat(params.get('max')) : Math.min(level + 3, 6);
+            const max = params.has('max') ? parseFloat(params.get('max')) : Math.min(level + 3, 7);
 
             document.getElementById('myLevel').value = level;
             document.getElementById('myLevelDisplay').textContent = level.toFixed(2);
@@ -1450,6 +1556,9 @@
                     activeGenderFilters = new Set(genders);
                     updateGenderFilterUI();
                 }
+            } else {
+                activeGenderFilters = getDefaultGenderFilters();
+                updateGenderFilterUI();
             }
         }
 
@@ -1494,7 +1603,7 @@
         function onLevelChange() {
             const level = parseFloat(document.getElementById('myLevel').value);
             document.getElementById('myLevelDisplay').textContent = level.toFixed(2);
-            const newMax = Math.min(level + 3, 6);
+            const newMax = Math.min(level + 3, 7);
             const maxEl = document.getElementById('maxLevel');
             maxEl.value = newMax;
             document.getElementById('maxLevelDisplay').textContent = newMax.toFixed(2);
@@ -1526,8 +1635,8 @@
             const minVal = parseFloat(document.getElementById('minLevel').value);
             const maxVal = parseFloat(document.getElementById('maxLevel').value);
             const fill = document.getElementById('trackFill');
-            const pctMin = (minVal / 6) * 100;
-            const pctMax = (maxVal / 6) * 100;
+            const pctMin = (minVal / 7) * 100;
+            const pctMax = (maxVal / 7) * 100;
             fill.style.left = pctMin + '%';
             fill.style.width = (pctMax - pctMin) + '%';
         }
