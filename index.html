@@ -30,6 +30,8 @@
             --error: #dc2626;
             --address: #777;
             --ctrl-h: 36px;
+            --sticky-top-desktop: 56px;
+            --sticky-top-mobile: 48px;
         }
 
         [data-theme="dark"] {
@@ -84,17 +86,25 @@
         }
 
         /* Toolbar */
-        .toolbar {
+        .toolbar-wrap {
             display: flex;
             flex-wrap: wrap;
             align-items: center;
             gap: 8px;
             position: sticky;
             top: 0;
-            z-index: 10;
+            z-index: 20;
             background: var(--bg);
             padding: 10px 0;
             margin-bottom: 8px;
+        }
+
+        .date-bar {
+            display: contents;
+        }
+
+        .toolbar {
+            display: contents;
         }
 
         .date-picker {
@@ -186,7 +196,7 @@
             font-variant-numeric: tabular-nums;
         }
 
-        .level-control input[type=range] {
+        .level-control>input[type=range] {
             width: 96px;
             -webkit-appearance: none;
             appearance: none;
@@ -316,6 +326,9 @@
             display: flex;
             align-items: center;
             gap: 8px;
+            position: sticky;
+            top: var(--sticky-top-desktop);
+            z-index: 10;
         }
 
         .club-header .address {
@@ -607,8 +620,28 @@
 
         /* Compact, edge-to-edge toolbar controls on small screens */
         @media (max-width: 640px) {
+            .toolbar-wrap {
+                display: contents;
+            }
+
+            .date-bar {
+                display: block;
+                position: sticky;
+                top: 0;
+                z-index: 20;
+                background: var(--bg);
+                padding: 6px 0;
+            }
+
             .toolbar {
+                display: flex;
+                flex-direction: column;
                 gap: 6px;
+                position: static;
+                background: none;
+                padding: 0;
+                margin-top: 2px;
+                margin-bottom: 8px;
             }
 
             .date-picker,
@@ -630,10 +663,18 @@
                 flex: 1;
             }
 
-            .level-control input[type=range],
+            .level-control>input[type=range],
             .dual-range {
                 flex: 1;
                 width: auto;
+            }
+
+            .dual-range input[type=range] {
+                width: 100%;
+            }
+
+            .club-header {
+                top: var(--sticky-top-mobile);
             }
         }
 
@@ -991,52 +1032,57 @@
                 </div>
             </div>
 
-            <div class="toolbar">
-                <div class="date-picker">
-                    <button onclick="changeDate(-1)" aria-label="Previous day">&#8249;</button>
-                    <span class="date-display" id="dateDisplay" onclick="openDatePicker()">
-                        <span id="dateText"></span>
-                    </span>
-                    <input type="date" class="hidden-date-input" id="dateInput" onchange="onDatePick(this.value)">
-                    <button onclick="changeDate(1)" aria-label="Next day">&#8250;</button>
-                </div>
-                <div class="level-stack">
-                    <div class="level-control">
-                        <label>My Level</label>
-                        <div class="value-display" id="myLevelDisplay">1.50</div>
-                        <input type="range" id="myLevel" min="0" max="7" step="0.01" value="1.50"
-                            oninput="onLevelChange()">
+            <div class="toolbar-wrap">
+                <div class="date-bar">
+                    <div class="date-picker">
+                        <button onclick="changeDate(-1)" aria-label="Previous day">&#8249;</button>
+                        <span class="date-display" id="dateDisplay" onclick="openDatePicker()">
+                            <span id="dateText"></span>
+                        </span>
+                        <input type="date" class="hidden-date-input" id="dateInput" onchange="onDatePick(this.value)">
+                        <button onclick="changeDate(1)" aria-label="Next day">&#8250;</button>
                     </div>
-                    <div class="level-control">
-                        <label>Range</label>
-                        <div class="value-display"><span id="minLevelDisplay">0.00</span>–<span
-                                id="maxLevelDisplay">4.50</span></div>
-                        <div class="dual-range">
-                            <div class="track"></div>
-                            <div class="track-fill" id="trackFill"></div>
-                            <input type="range" id="minLevel" min="0" max="7" step="0.10" value="0"
-                                oninput="onRangeChange('min')">
-                            <input type="range" id="maxLevel" min="0" max="7" step="0.10" value="4.50"
-                                oninput="onRangeChange('max')">
+                </div>
+                <div class="toolbar">
+                    <div class="level-stack">
+                        <div class="level-control">
+                            <label>My Level</label>
+                            <div class="value-display" id="myLevelDisplay">1.50</div>
+                            <input type="range" id="myLevel" min="0" max="7" step="0.01" value="1.50"
+                                oninput="onLevelChange()">
+                        </div>
+                        <div class="level-control">
+                            <label>Range</label>
+                            <div class="value-display"><span id="minLevelDisplay">0.00</span>–<span
+                                    id="maxLevelDisplay">4.50</span></div>
+                            <div class="dual-range">
+                                <div class="track"></div>
+                                <div class="track-fill" id="trackFill"></div>
+                                <input type="range" id="minLevel" min="0" max="7" step="0.10" value="0"
+                                    oninput="onRangeChange('min')">
+                                <input type="range" id="maxLevel" min="0" max="7" step="0.10" value="4.50"
+                                    oninput="onRangeChange('max')">
+                            </div>
                         </div>
                     </div>
-                </div>
-                <div class="seg" id="timeFilter">
-                    <button data-time="morning" onclick="setTimeFilter('morning')" title="06:00–12:00">Morning</button>
-                    <button data-time="afternoon" onclick="setTimeFilter('afternoon')"
-                        title="12:00–18:00">Afternoon</button>
-                    <button data-time="evening" onclick="setTimeFilter('evening')" class="active"
-                        title="18:00–24:00">Evening</button>
-                </div>
-                <div class="seg" id="durationFilter">
-                    <button data-dur="60" onclick="setDurationFilter('60')">60m</button>
-                    <button data-dur="90" onclick="setDurationFilter('90')" class="active">90m</button>
-                    <button data-dur="120" onclick="setDurationFilter('120')" class="active">120m</button>
-                </div>
-                <div class="seg" id="genderFilter">
-                    <button data-gender="female" onclick="setGenderFilter('female')" class="active">Female</button>
-                    <button data-gender="male" onclick="setGenderFilter('male')" class="active">Male</button>
-                    <button data-gender="mixed" onclick="setGenderFilter('mixed')" class="active">Mixed</button>
+                    <div class="seg" id="timeFilter">
+                        <button data-time="morning" onclick="setTimeFilter('morning')"
+                            title="06:00–12:00">Morning</button>
+                        <button data-time="afternoon" onclick="setTimeFilter('afternoon')"
+                            title="12:00–18:00">Afternoon</button>
+                        <button data-time="evening" onclick="setTimeFilter('evening')" class="active"
+                            title="18:00–24:00">Evening</button>
+                    </div>
+                    <div class="seg" id="durationFilter">
+                        <button data-dur="60" onclick="setDurationFilter('60')">60m</button>
+                        <button data-dur="90" onclick="setDurationFilter('90')" class="active">90m</button>
+                        <button data-dur="120" onclick="setDurationFilter('120')" class="active">120m</button>
+                    </div>
+                    <div class="seg" id="genderFilter">
+                        <button data-gender="female" onclick="setGenderFilter('female')" class="active">Female</button>
+                        <button data-gender="male" onclick="setGenderFilter('male')" class="active">Male</button>
+                        <button data-gender="mixed" onclick="setGenderFilter('mixed')" class="active">Mixed</button>
+                    </div>
                 </div>
             </div>
 
