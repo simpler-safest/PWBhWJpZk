@@ -1835,14 +1835,19 @@
 
         async function initAuth() {
             const auth = getStoredAuth();
-            if (auth && (isAccessTokenValid(auth) || isRefreshTokenValid(auth))) {
-                scheduleTokenRefresh();
-                await Promise.all([fetchUserLevel(), fetchUserProfile()]);
-                showAppScreen();
-            } else {
+            // No usable session stored → go to login
+            if (!auth || !(isAccessTokenValid(auth) || isRefreshTokenValid(auth))) {
                 clearAuth();
                 showLoginScreen();
+                return;
             }
+            // We have a session (valid or refreshable): show the app immediately and
+            // start loading matches. Profile/level load in the background, and any
+            // required token refresh happens lazily — only a failed refresh will
+            // bounce the user back to the login screen (handled in performTokenRefresh).
+            scheduleTokenRefresh();
+            showAppScreen();
+            Promise.all([fetchUserLevel(), fetchUserProfile()]);
         }
 
         // ========================
