@@ -474,6 +474,11 @@
             color: var(--accent);
         }
 
+        .team-conf {
+            color: var(--muted-light);
+            font-weight: 600;
+        }
+
         .team-players {
             display: flex;
             justify-content: center;
@@ -535,6 +540,13 @@
             background: rgba(34, 197, 94, .15);
             padding: 1px 8px;
             border-radius: 10px;
+            font-variant-numeric: tabular-nums;
+        }
+
+        .player-conf {
+            font-size: 10px;
+            font-weight: 600;
+            color: var(--muted-light);
             font-variant-numeric: tabular-nums;
         }
 
@@ -794,6 +806,11 @@
             font-size: 13px;
             font-weight: 600;
             color: var(--accent);
+        }
+
+        .user-conf {
+            color: var(--muted-light);
+            font-weight: 600;
         }
 
         .menu-wrap {
@@ -1178,6 +1195,14 @@
             padding: 40px 0;
         }
 
+        .chart-caption {
+            font-size: 12px;
+            font-weight: 600;
+            color: var(--muted);
+            margin-bottom: 10px;
+            text-align: center;
+        }
+
         .chart-wrap {
             position: relative;
         }
@@ -1524,6 +1549,18 @@
             return 1.50;
         }
 
+        function getUserLevelConfidence() {
+            try {
+                const raw = localStorage.getItem(LEVELS_STORAGE_KEY);
+                if (!raw) return null;
+                const levels = JSON.parse(raw);
+                if (Array.isArray(levels) && levels.length > 0 && levels[0].level_confidence != null) {
+                    return levels[0].level_confidence;
+                }
+            } catch (_) { }
+            return null;
+        }
+
         async function fetchUserLevel() {
             try {
                 await ensureValidToken();
@@ -1622,7 +1659,11 @@
             const nameEl = document.getElementById('userName');
             const levelEl = document.getElementById('userLevel');
             if (nameEl) nameEl.textContent = name;
-            if (levelEl) levelEl.textContent = 'Level ' + level.toFixed(2);
+            if (levelEl) {
+                const conf = getUserLevelConfidence();
+                levelEl.innerHTML = 'Level ' + level.toFixed(2)
+                    + (conf != null ? ' <span class="user-conf">\u00b7 ' + Math.round(conf * 100) + '%</span>' : '');
+            }
             if (avatarEl) {
                 avatarEl.innerHTML = picture
                     ? '<img src="' + esc(picture) + '" alt="">'
@@ -1641,7 +1682,7 @@
                 if (Array.isArray(levels) && levels.length > 0 && Array.isArray(levels[0].history)) {
                     return levels[0].history
                         .filter(h => h.level_value != null && h.date)
-                        .map(h => ({ value: h.level_value, date: new Date(h.date + 'Z') }))
+                        .map(h => ({ value: h.level_value, date: new Date(h.date + 'Z'), type: h.object_type }))
                         .sort((a, b) => a.date - b.date);
                 }
             } catch (_) { }
@@ -1706,7 +1747,11 @@
                     + ' data-date="' + esc(dateLbl) + '" data-value="' + p.value.toFixed(2) + '"></circle>';
             });
 
+            const matchCount = points.filter(p => p.type === 'MATCH').length;
+            const caption = '<div class="chart-caption">' + matchCount + ' match' + (matchCount === 1 ? '' : 'es') + ' · ' + points.length + ' data points</div>';
+
             return '<div class="chart-wrap" id="chartWrap">'
+                + caption
                 + '<svg class="level-chart" viewBox="0 0 ' + W + ' ' + H + '" preserveAspectRatio="xMidYMid meet" role="img" aria-label="Level progression chart">'
                 + grid
                 + '<path class="chart-area" d="' + areaPath + '"></path>'
@@ -2300,10 +2345,14 @@
                 const avatar = avatarUrl
                     ? '<img class="player-avatar" src="' + esc(avatarUrl) + '" alt="">'
                     : '<span class="player-avatar-placeholder">\u{1F464}</span>';
+                const conf = p.level_confidence != null
+                    ? '<span class="player-conf" title="Level confidence">' + Math.round(p.level_confidence * 100) + '%</span>'
+                    : '';
                 return '<div class="player-cell">'
                     + avatar
                     + '<span class="player-name">' + esc(firstName(p.name)) + '</span>'
                     + '<span class="player-level-pill">' + (p.level_value != null ? p.level_value.toFixed(2) : '?') + '</span>'
+                    + conf
                     + '</div>';
             };
 
@@ -2321,11 +2370,16 @@
                 const vals = team.players.map(p => p.level_value).filter(v => v != null);
                 const sum = vals.reduce((a, b) => a + b, 0);
                 const avg = vals.length ? sum / vals.length : null;
+                const confs = team.players.map(p => p.level_confidence).filter(v => v != null);
+                const avgConf = confs.length ? confs.reduce((a, b) => a + b, 0) / confs.length : null;
                 let avgHtml = 'Avg ' + (avg != null ? avg.toFixed(2) : '\u2013');
+                if (avgConf != null) {
+                    avgHtml += '<span class="team-conf" title="Average level confidence"> (' + Math.round(avgConf * 100) + '%)</span>';
+                }
                 // With a single player and an open spot, show the projected average if I join
                 if (vals.length === 1 && team.players.length < team.max_players && !isNaN(myLevel)) {
                     const projected = (sum + myLevel) / (vals.length + 1);
-                    avgHtml += '<span class="team-avg-you"> \u00B7 ' + projected.toFixed(2) + ' with you</span>';
+                    avgHtml += '<span class="team-avg-you" title="Average if you join"> \u00B7 ' + projected.toFixed(2) + '</span>';
                 }
                 playersHtml += '<div class="team-group">';
                 playersHtml += '<div class="team-avg">' + avgHtml + '</div>';
