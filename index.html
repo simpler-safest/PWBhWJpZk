@@ -312,30 +312,105 @@
 
         /* Club Section */
         .club-section {
-            margin-bottom: 32px;
+            margin-bottom: 24px;
         }
 
         .club-header {
-            font-size: 16px;
-            font-weight: 700;
-            margin-bottom: 14px;
-            padding: 12px 16px;
+            font-size: 15px;
+            font-weight: 600;
+            margin-bottom: 10px;
+            padding: 8px 12px;
             background: var(--card-bg);
             border-radius: 8px;
-            box-shadow: 0 1px 3px var(--card-shadow);
+            box-shadow: 0 1px 2px var(--card-shadow);
             display: flex;
             align-items: center;
-            gap: 8px;
+            justify-content: space-between;
+            gap: 12px;
             position: sticky;
             top: var(--sticky-top-desktop);
             z-index: 10;
+            transition: box-shadow .15s, background .15s;
+        }
+
+        .club-header:hover {
+            box-shadow: 0 2px 6px var(--card-shadow-hover);
+        }
+
+        .club-header .club-info {
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+            min-width: 0;
+            flex: 1;
+        }
+
+        .club-header .club-name {
+            font-size: 15px;
+            font-weight: 600;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
         }
 
         .club-header .address {
             font-weight: 400;
-            font-size: 13px;
+            font-size: 12px;
             color: var(--address);
-            margin-left: auto;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .club-header .club-toggle {
+            flex-shrink: 0;
+            margin-left: 8px;
+        }
+
+        .club-toggle-btn {
+            width: 44px;
+            height: 24px;
+            border-radius: 12px;
+            border: none;
+            background: var(--track-bg);
+            cursor: pointer;
+            position: relative;
+            transition: background .2s ease;
+            display: flex;
+            align-items: center;
+            padding: 0 2px;
+        }
+
+        .club-toggle-btn.enabled {
+            background: var(--accent);
+        }
+
+        .club-toggle-btn:hover:not(:disabled) {
+            opacity: 0.9;
+        }
+
+        .club-toggle-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .club-toggle-btn::after {
+            content: '';
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background: white;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+            transition: transform .2s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .club-toggle-btn.enabled::after {
+            transform: translateX(20px);
+        }
+
+        .club-toggle-btn:focus-visible {
+            outline: 2px solid var(--accent);
+            outline-offset: 2px;
         }
 
         /* Match Cards Grid */
@@ -743,6 +818,29 @@
 
             .club-header {
                 top: var(--sticky-top-mobile);
+                padding: 6px 10px;
+            }
+
+            .club-header .club-name {
+                font-size: 14px;
+            }
+
+            .club-header .address {
+                font-size: 11px;
+            }
+
+            .club-toggle-btn {
+                width: 40px;
+                height: 22px;
+            }
+
+            .club-toggle-btn::after {
+                width: 18px;
+                height: 18px;
+            }
+
+            .club-toggle-btn.enabled::after {
+                transform: translateX(18px);
             }
         }
 
@@ -1408,6 +1506,8 @@
         const AUTH_STORAGE_KEY = 'playtomic_auth';
         const LEVELS_STORAGE_KEY = 'playtomic_levels';
         const USER_PROFILE_STORAGE_KEY = 'playtomic_user_profile';
+        const TENANTS_STORAGE_KEY = 'playtomic_tenants';
+        const CLUBS_PLAYED_STORAGE_KEY = 'playtomic_clubs_played';
         const AUTH_LOGIN_URL = API_BASE + '/v3/auth/login';
         const AUTH_REFRESH_URL = API_BASE + '/v3/auth/token';
         const LEVELS_URL = API_BASE + '/v1/levels?user_id=me&with_history=true';
@@ -1632,8 +1732,181 @@
                 localStorage.setItem(USER_PROFILE_STORAGE_KEY, JSON.stringify(data));
                 applyUserGender();
                 updateUserHeader();
+                fetchAndCacheTenants();
+                fetchAndCacheClubsPlayed();
             } catch (e) {
                 console.warn('Error fetching user profile:', e);
+            }
+        }
+
+        async function fetchAndCacheTenants(additionalTenantIds = []) {
+            try {
+                let tenantIdsToProcess = new Set(additionalTenantIds);
+                const raw = localStorage.getItem(USER_PROFILE_STORAGE_KEY);
+                if (raw) {
+                    const profile = JSON.parse(raw);
+                    if (profile && profile.linked_accounts) {
+                        for (const account of profile.linked_accounts) {
+                            if (account.tenant_id) {
+                                tenantIdsToProcess.add(account.tenant_id);
+                            }
+                        }
+                    }
+                }
+
+                if (tenantIdsToProcess.size === 0) return;
+
+                let tenantCache = {};
+                try {
+                    const cacheRaw = localStorage.getItem(TENANTS_STORAGE_KEY);
+                    if (cacheRaw) tenantCache = JSON.parse(cacheRaw);
+                } catch (e) {
+                    console.warn('Failed to parse tenant cache', e);
+                }
+
+                const tenantIdsToFetch = [];
+                for (const tId of tenantIdsToProcess) {
+                    if (!tenantCache[tId]) {
+                        tenantIdsToFetch.push(tId);
+                    }
+                }
+
+                if (tenantIdsToFetch.length === 0) return;
+
+                const queryParam = tenantIdsToFetch.join(',');
+                const url = API_BASE + `/v1/tenants?playtomic_status=ACTIVE&tenant_id=${queryParam}`;
+
+                let tenantsData;
+                try {
+                    tenantsData = await fetchUrl(url);
+                } catch (err) {
+                    console.warn('Failed to fetch tenants:', err);
+                    return;
+                }
+                const tenantsArray = Array.isArray(tenantsData) ? tenantsData : (tenantsData.data || [tenantsData]);
+
+                let cacheUpdated = false;
+                for (const tenant of tenantsArray) {
+                    if (tenant.tenant_id) {
+                        tenantCache[tenant.tenant_id] = tenant;
+                        cacheUpdated = true;
+                    }
+                }
+
+                if (cacheUpdated) {
+                    localStorage.setItem(TENANTS_STORAGE_KEY, JSON.stringify(tenantCache));
+                }
+            } catch (e) {
+                console.warn('Error fetching and caching tenants:', e);
+            }
+        }
+
+        async function fetchAndCacheClubsPlayed() {
+            try {
+                const raw = localStorage.getItem(USER_PROFILE_STORAGE_KEY);
+                if (!raw) return;
+                const profile = JSON.parse(raw);
+                if (!profile || !profile.user_id) return;
+
+                let clubsCache = {};
+                try {
+                    const cacheRaw = localStorage.getItem(CLUBS_PLAYED_STORAGE_KEY);
+                    if (cacheRaw) clubsCache = JSON.parse(cacheRaw);
+                } catch (e) {
+                    console.warn('Failed to parse clubs played cache', e);
+                }
+
+                if (clubsCache[profile.user_id]) return;
+
+                const url = API_BASE + `/v1/matches_summary/top_tenants_by_player?player_user_id=${profile.user_id}&sport_id=PADEL`;
+
+                let data;
+                try {
+                    data = await fetchUrl(url);
+                } catch (err) {
+                    console.warn('Failed to fetch clubs played:', err);
+                    return;
+                }
+
+                clubsCache[profile.user_id] = data;
+                localStorage.setItem(CLUBS_PLAYED_STORAGE_KEY, JSON.stringify(clubsCache));
+
+                await updateClubs();
+            } catch (e) {
+                console.warn('Error fetching and caching clubs played:', e);
+            }
+        }
+
+        async function updateClubs() {
+            try {
+                const profileRaw = localStorage.getItem(USER_PROFILE_STORAGE_KEY);
+                if (!profileRaw) return;
+                const profile = JSON.parse(profileRaw);
+                if (!profile || !profile.user_id) return;
+
+                const clubsRaw = localStorage.getItem(CLUBS_PLAYED_STORAGE_KEY);
+                if (!clubsRaw) return;
+                const clubsCache = JSON.parse(clubsRaw);
+
+                const userClubs = clubsCache[profile.user_id];
+                if (!userClubs) return;
+
+                const clubsArray = Array.isArray(userClubs) ? userClubs : (userClubs.data || [userClubs]);
+                const tenantIds = clubsArray.map(c => c.tenant_id).filter(id => id);
+
+                if (tenantIds.length > 0) {
+                    await fetchAndCacheTenants(tenantIds);
+
+                    const tenantCacheRaw = localStorage.getItem(TENANTS_STORAGE_KEY);
+                    let tenantCache = {};
+                    if (tenantCacheRaw) {
+                        tenantCache = JSON.parse(tenantCacheRaw);
+                    }
+
+                    CLUBS = [];
+                    for (const clubData of clubsArray) {
+                        const tId = clubData.tenant_id;
+                        if (!tId) continue;
+                        const tenant = tenantCache[tId];
+                        if (tenant) {
+                            CLUBS.push({
+                                id: tId,
+                                name: tenant.tenant_name || tenant.name || 'Unknown Club',
+                                address: tenant.address,
+                                disabled: !!clubData.disabled
+                            });
+                        }
+                    }
+                    CLUBS.sort((a, b) => (a.disabled === b.disabled ? 0 : a.disabled ? 1 : -1));
+                    render();
+                }
+            } catch (e) {
+                console.warn('Error updating clubs', e);
+            }
+        }
+
+        function toggleClub(clubId) {
+            try {
+                const profileRaw = localStorage.getItem(USER_PROFILE_STORAGE_KEY);
+                if (!profileRaw) return;
+                const profile = JSON.parse(profileRaw);
+                const userId = profile.user_id;
+
+                const clubsRaw = localStorage.getItem(CLUBS_PLAYED_STORAGE_KEY);
+                if (!clubsRaw) return;
+                const clubsCache = JSON.parse(clubsRaw);
+                const userClubs = clubsCache[userId];
+                if (!userClubs) return;
+
+                const clubsArray = Array.isArray(userClubs) ? userClubs : (userClubs.data || []);
+                const clubObj = clubsArray.find(c => c.tenant_id === clubId);
+                if (clubObj) {
+                    clubObj.disabled = !clubObj.disabled;
+                    localStorage.setItem(CLUBS_PLAYED_STORAGE_KEY, JSON.stringify(clubsCache));
+                    updateClubs();
+                }
+            } catch (e) {
+                console.warn('Error toggling club', e);
             }
         }
 
@@ -1874,6 +2147,7 @@
             updateUserHeader();
             readFromUrl();
             updateTrackFill();
+            updateClubs();
             render();
             syncToUrl();
         }
@@ -1977,12 +2251,7 @@
         initTheme();
 
 
-        const CLUBS = [
-            { id: '6c596ac6-de86-412b-8c0d-40cb8a7dbaee', name: 'mitte — highline | flingern' },
-            { id: '2cb6322d-e37b-4fa4-80f0-903bce84a74a', name: 'mitte — bøhler | meerbusch' },
-            { id: '11084c81-8fe3-4bc7-be1f-b60aa28a2ca0', name: 'The Cube Padel | Köln' }
-            // { id: '309e8c87-d6f8-44fd-bf0b-08b77a2ce421', name: 'Sportmühle Hilden' }
-        ];
+        let CLUBS = [];
 
         const DAY_NAMES = ['SUNDAY', 'MONDAY', 'TUESDAY', 'WEDNESDAY', 'THURSDAY', 'FRIDAY', 'SATURDAY'];
 
@@ -2200,7 +2469,7 @@
             const now = new Date();
             const createdAt = now.getUTCFullYear() + '-' + pad(now.getUTCMonth() + 1) + '-' + pad(now.getUTCDate())
                 + 'T' + pad(now.getUTCHours()) + ':' + pad(now.getUTCMinutes()) + ':' + pad(now.getUTCSeconds());
-            const allTenantIds = CLUBS.map(c => c.id).join(',');
+            const allTenantIds = CLUBS.filter(c => !c.disabled).map(c => c.id).join(',');
             const forLevel = document.getElementById('myLevel').value;
 
             const base = {
@@ -2437,16 +2706,24 @@
                 body = '<div class="matches-grid">' + matches.map(renderMatchCard).join('') + '</div>';
             }
 
-            const addr = (matches.length > 0 && matches[0].tenant && matches[0].tenant.address)
-                ? matches[0].tenant.address.street + ', ' + matches[0].tenant.address.city
+            const addr = (club.address && club.address.street)
+                ? club.address.street + (club.address.city ? ', ' + club.address.city : '')
                 : '';
 
-            return '<div class="club-section">'
+            const isDisabled = club.disabled;
+            const sectionClass = isDisabled ? 'club-section disabled' : 'club-section';
+            const toggleClass = isDisabled ? '' : 'enabled';
+            const toggleHtml = '<button class="club-toggle-btn ' + toggleClass + '" onclick="toggleClub(\'' + club.id + '\')" aria-label="' + (isDisabled ? 'Enable club' : 'Disable club') + '" aria-pressed="' + (!isDisabled).toString() + '"></button>';
+
+            return '<div class="' + sectionClass + '">'
                 + '<div class="club-header">'
-                + '<span>\u{1F4CD} ' + esc(club.name) + '</span>'
+                + '<div class="club-info">'
+                + '<span class="club-name">\u{1F4CD} ' + esc(club.name) + '</span>'
                 + (addr ? '<span class="address">' + esc(addr) + '</span>' : '')
                 + '</div>'
-                + body
+                + '<div class="club-toggle">' + toggleHtml + '</div>'
+                + '</div>'
+                + (isDisabled ? '' : body)
                 + '</div>';
         }
 
