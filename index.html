@@ -470,6 +470,10 @@
             letter-spacing: .3px;
         }
 
+        .team-avg-you {
+            color: var(--accent);
+        }
+
         .team-players {
             display: flex;
             justify-content: center;
@@ -1903,18 +1907,22 @@
                 + '<span class="player-level-pill">\u2013</span>'
                 + '</div>';
 
-            const teamAvg = (team) => {
-                const vals = team.players.map(p => p.level_value).filter(v => v != null);
-                if (vals.length === 0) return null;
-                return vals.reduce((a, b) => a + b, 0) / vals.length;
-            };
+            const myLevel = parseFloat(document.getElementById('myLevel').value);
 
             let playersHtml = '';
             m.teams.forEach((team, idx) => {
                 if (idx > 0) playersHtml += '<div class="team-divider-v"></div>';
-                const avg = teamAvg(team);
+                const vals = team.players.map(p => p.level_value).filter(v => v != null);
+                const sum = vals.reduce((a, b) => a + b, 0);
+                const avg = vals.length ? sum / vals.length : null;
+                let avgHtml = 'Avg ' + (avg != null ? avg.toFixed(2) : '\u2013');
+                // With a single player and an open spot, show the projected average if I join
+                if (vals.length === 1 && team.players.length < team.max_players && !isNaN(myLevel)) {
+                    const projected = (sum + myLevel) / (vals.length + 1);
+                    avgHtml += '<span class="team-avg-you"> \u00B7 ' + projected.toFixed(2) + ' with you</span>';
+                }
                 playersHtml += '<div class="team-group">';
-                playersHtml += '<div class="team-avg">Avg ' + (avg != null ? avg.toFixed(2) : '\u2013') + '</div>';
+                playersHtml += '<div class="team-avg">' + avgHtml + '</div>';
                 playersHtml += '<div class="team-players">';
                 team.players.forEach(p => { playersHtml += renderPlayerCell(p); });
                 const teamOpen = Math.max(0, team.max_players - team.players.length);
