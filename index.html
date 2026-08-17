@@ -748,6 +748,54 @@
             min-width: 0;
         }
 
+        .user-profile {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            flex: 1;
+            min-width: 0;
+        }
+
+        .user-avatar-wrap {
+            width: 44px;
+            height: 44px;
+            border-radius: 50%;
+            background: var(--tag-bg);
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 22px;
+            overflow: hidden;
+            flex-shrink: 0;
+        }
+
+        .user-avatar-wrap img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        .user-info {
+            display: flex;
+            flex-direction: column;
+            min-width: 0;
+        }
+
+        .user-name {
+            font-size: 18px;
+            font-weight: 700;
+            line-height: 1.2;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .user-level {
+            font-size: 13px;
+            font-weight: 600;
+            color: var(--accent);
+        }
+
         .menu-wrap {
             position: relative;
             flex-shrink: 0;
@@ -1074,7 +1122,13 @@
         <div class="pull-indicator" id="pullIndicator"><span class="pull-icon">&#8635;</span></div>
         <div class="container">
             <div class="title-row">
-                <h1>Padel Match Finder</h1>
+                <div class="user-profile" id="userProfile">
+                    <span class="user-avatar-wrap" id="userAvatar">👤</span>
+                    <div class="user-info">
+                        <span class="user-name" id="userName">—</span>
+                        <span class="user-level" id="userLevel"></span>
+                    </div>
+                </div>
                 <div class="menu-wrap">
                     <button class="hamburger-btn" id="hamburgerBtn" onclick="toggleMenu(event)" aria-label="Menu"
                         aria-haspopup="true" aria-expanded="false">&#9776;</button>
@@ -1311,6 +1365,7 @@
                 const data = await res.json();
                 localStorage.setItem(LEVELS_STORAGE_KEY, JSON.stringify(data));
                 applyUserLevel();
+                updateUserHeader();
             } catch (e) {
                 console.warn('Error fetching user level:', e);
             }
@@ -1365,6 +1420,7 @@
                 const data = await res.json();
                 localStorage.setItem(USER_PROFILE_STORAGE_KEY, JSON.stringify(data));
                 applyUserGender();
+                updateUserHeader();
             } catch (e) {
                 console.warn('Error fetching user profile:', e);
             }
@@ -1376,6 +1432,27 @@
             if (!params.has('gender')) {
                 activeGenderFilters = getDefaultGenderFilters();
                 updateGenderFilterUI();
+            }
+        }
+
+        function updateUserHeader() {
+            let profile = null;
+            try {
+                const raw = localStorage.getItem(USER_PROFILE_STORAGE_KEY);
+                if (raw) profile = JSON.parse(raw);
+            } catch (_) { }
+            const name = (profile && (profile.full_name || profile.name)) || 'Player';
+            const picture = profile && profile.picture;
+            const level = getUserLevel();
+            const avatarEl = document.getElementById('userAvatar');
+            const nameEl = document.getElementById('userName');
+            const levelEl = document.getElementById('userLevel');
+            if (nameEl) nameEl.textContent = name;
+            if (levelEl) levelEl.textContent = 'Level ' + level.toFixed(2);
+            if (avatarEl) {
+                avatarEl.innerHTML = picture
+                    ? '<img src="' + esc(picture) + '" alt="">'
+                    : '\u{1F464}';
             }
         }
 
@@ -1439,6 +1516,7 @@
             document.getElementById('loginOverlay').classList.add('hidden');
             document.getElementById('appContent').classList.remove('hidden');
             // Initialize app on first show
+            updateUserHeader();
             readFromUrl();
             updateTrackFill();
             render();
@@ -1510,6 +1588,17 @@
         });
         document.addEventListener('keydown', (e) => {
             if (e.key === 'Escape') setMenuOpen(false);
+            // Arrow keys navigate between dates
+            if (e.key === 'ArrowLeft' || e.key === 'ArrowRight') {
+                // Ignore while the login screen is showing
+                if (document.getElementById('appContent').classList.contains('hidden')) return;
+                // Don't hijack arrows while typing/adjusting a form control
+                const el = e.target;
+                if (el && typeof el.closest === 'function' && el.closest('input, textarea, select')) return;
+                if (e.metaKey || e.ctrlKey || e.altKey) return;
+                e.preventDefault();
+                changeDate(e.key === 'ArrowLeft' ? -1 : 1);
+            }
         });
 
         function initTheme() {
