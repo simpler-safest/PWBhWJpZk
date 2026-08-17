@@ -449,23 +449,54 @@
 
         .players-list {
             display: flex;
-            flex-direction: column;
-            gap: 5px;
+            align-items: stretch;
+            gap: 10px;
         }
 
-        .player-row {
+        .team-group {
+            flex: 1;
+            min-width: 0;
             display: flex;
+            flex-direction: column;
             align-items: center;
             gap: 6px;
-            font-size: 13px;
-            padding: 4px 8px;
-            border-radius: 6px;
-            background: var(--player-bg);
+        }
+
+        .team-avg {
+            font-size: 10px;
+            font-weight: 700;
+            color: var(--muted);
+            text-transform: uppercase;
+            letter-spacing: .3px;
+        }
+
+        .team-players {
+            display: flex;
+            justify-content: center;
+            gap: 8px;
+            width: 100%;
+        }
+
+        .team-divider-v {
+            width: 1px;
+            background: var(--border-light);
+            align-self: stretch;
+            flex-shrink: 0;
+        }
+
+        .player-cell {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 4px;
+            min-width: 0;
+            flex: 1;
+            max-width: 72px;
         }
 
         .player-avatar {
-            width: 24px;
-            height: 24px;
+            width: 40px;
+            height: 40px;
             border-radius: 50%;
             object-fit: cover;
             flex-shrink: 0;
@@ -475,26 +506,47 @@
             display: inline-flex;
             align-items: center;
             justify-content: center;
-            width: 24px;
-            height: 24px;
+            width: 40px;
+            height: 40px;
             border-radius: 50%;
             background: var(--tag-bg);
-            font-size: 12px;
+            font-size: 18px;
             flex-shrink: 0;
         }
 
-        .player-row.empty {
+        .player-name {
+            font-size: 12px;
+            font-weight: 600;
+            color: var(--text);
+            max-width: 100%;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .player-level-pill {
+            font-size: 11px;
+            font-weight: 700;
+            color: var(--green);
+            background: rgba(34, 197, 94, .15);
+            padding: 1px 8px;
+            border-radius: 10px;
+            font-variant-numeric: tabular-nums;
+        }
+
+        .player-cell.empty .player-name {
+            color: var(--muted-light);
+        }
+
+        .player-cell.empty .player-avatar-placeholder {
             border: 1px dashed var(--player-empty-border);
             background: var(--card-bg);
             color: var(--green);
-            font-weight: 500;
         }
 
-        .player-level {
-            margin-left: auto;
-            font-size: 12px;
+        .player-cell.empty .player-level-pill {
             color: var(--muted-light);
-            font-weight: 500;
+            background: var(--tag-bg);
         }
 
         .spots-summary {
@@ -1821,7 +1873,6 @@
         function renderMatchCard(m) {
             const spots = spotsInfo(m);
             const full = spots.available === 0;
-            const players = m.teams.flatMap(t => t.players);
 
             let tags = '';
             const rp = m.resource_properties;
@@ -1831,22 +1882,48 @@
                 });
             }
 
-            let playersHtml = '';
-            players.forEach(p => {
+            const firstName = (name) => (name || 'Player').split(' ')[0];
+
+            const renderPlayerCell = (p) => {
                 const u = usersData[p.user_id];
                 const avatarUrl = u && u.picture;
                 const avatar = avatarUrl
                     ? '<img class="player-avatar" src="' + esc(avatarUrl) + '" alt="">'
                     : '<span class="player-avatar-placeholder">\u{1F464}</span>';
-                playersHtml += '<div class="player-row">'
+                return '<div class="player-cell">'
                     + avatar
-                    + '<span>' + esc(p.name || 'Player') + '</span>'
-                    + '<span class="player-level">Lvl ' + (p.level_value != null ? p.level_value.toFixed(2) : '?') + '</span>'
+                    + '<span class="player-name">' + esc(firstName(p.name)) + '</span>'
+                    + '<span class="player-level-pill">' + (p.level_value != null ? p.level_value.toFixed(2) : '?') + '</span>'
                     + '</div>';
+            };
+
+            const renderEmptyCell = () => '<div class="player-cell empty">'
+                + '<span class="player-avatar-placeholder">\u2795</span>'
+                + '<span class="player-name">Open</span>'
+                + '<span class="player-level-pill">\u2013</span>'
+                + '</div>';
+
+            const teamAvg = (team) => {
+                const vals = team.players.map(p => p.level_value).filter(v => v != null);
+                if (vals.length === 0) return null;
+                return vals.reduce((a, b) => a + b, 0) / vals.length;
+            };
+
+            let playersHtml = '';
+            m.teams.forEach((team, idx) => {
+                if (idx > 0) playersHtml += '<div class="team-divider-v"></div>';
+                const avg = teamAvg(team);
+                playersHtml += '<div class="team-group">';
+                playersHtml += '<div class="team-avg">Avg ' + (avg != null ? avg.toFixed(2) : '\u2013') + '</div>';
+                playersHtml += '<div class="team-players">';
+                team.players.forEach(p => { playersHtml += renderPlayerCell(p); });
+                const teamOpen = Math.max(0, team.max_players - team.players.length);
+                for (let i = 0; i < teamOpen; i++) {
+                    playersHtml += renderEmptyCell();
+                }
+                playersHtml += '</div>';
+                playersHtml += '</div>';
             });
-            for (let i = 0; i < spots.available; i++) {
-                playersHtml += '<div class="player-row empty">\u2795 Open spot</div>';
-            }
 
             const levelRange = (m.min_level != null && m.max_level != null)
                 ? '\u{1F4CA} ' + m.min_level.toFixed(1) + ' \u2013 ' + m.max_level.toFixed(1) : '';
