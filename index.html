@@ -1066,6 +1066,166 @@
             display: none;
         }
 
+        /* Level progression modal */
+        .modal-overlay {
+            position: fixed;
+            inset: 0;
+            z-index: 1100;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            background: rgba(0, 0, 0, .5);
+            padding: 16px;
+        }
+
+        .modal-overlay.open {
+            display: flex;
+        }
+
+        .modal-card {
+            background: var(--card-bg);
+            border-radius: 14px;
+            width: 100%;
+            max-width: 680px;
+            box-shadow: 0 24px 48px var(--card-shadow-hover);
+            border: 1px solid var(--border-light);
+            overflow: hidden;
+            animation: cardFadeIn .25s ease-out;
+        }
+
+        .modal-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 16px 18px;
+            font-size: 16px;
+            font-weight: 700;
+            border-bottom: 1px solid var(--border-light);
+        }
+
+        .modal-close {
+            background: none;
+            border: none;
+            font-size: 22px;
+            line-height: 1;
+            color: var(--muted);
+            cursor: pointer;
+            width: 32px;
+            height: 32px;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: background .15s, color .15s;
+        }
+
+        .modal-close:hover {
+            background: var(--filter-hover);
+            color: var(--text);
+        }
+
+        .modal-body {
+            padding: 18px;
+        }
+
+        .level-chart {
+            width: 100%;
+            height: auto;
+            display: block;
+        }
+
+        .chart-grid {
+            stroke: var(--border-light);
+            stroke-width: 1;
+        }
+
+        .chart-area {
+            fill: rgba(59, 130, 246, .12);
+            stroke: none;
+        }
+
+        .chart-line {
+            fill: none;
+            stroke: var(--accent);
+            stroke-width: 2.5;
+            stroke-linejoin: round;
+            stroke-linecap: round;
+        }
+
+        .chart-dot {
+            fill: var(--accent);
+            stroke: var(--card-bg);
+            stroke-width: 1.5;
+        }
+
+        .chart-ylabel {
+            fill: var(--muted);
+            font-size: 10px;
+            text-anchor: end;
+            font-weight: 600;
+        }
+
+        .chart-xlabel {
+            fill: var(--muted);
+            font-size: 10px;
+            text-anchor: middle;
+            font-weight: 600;
+        }
+
+        .chart-empty {
+            text-align: center;
+            color: var(--muted);
+            padding: 40px 0;
+        }
+
+        .chart-wrap {
+            position: relative;
+        }
+
+        .chart-dot {
+            transition: r .1s;
+        }
+
+        .chart-hit {
+            cursor: pointer;
+        }
+
+        .chart-hit:hover+.chart-dot,
+        .chart-dot.active {
+            r: 5;
+        }
+
+        .chart-tooltip {
+            position: absolute;
+            pointer-events: none;
+            background: var(--text);
+            color: var(--card-bg);
+            padding: 5px 9px;
+            border-radius: 8px;
+            font-size: 11px;
+            font-weight: 700;
+            white-space: nowrap;
+            opacity: 0;
+            transform: translateY(4px);
+            transition: opacity .12s, transform .12s;
+            z-index: 5;
+            display: flex;
+            flex-direction: column;
+            gap: 1px;
+            line-height: 1.35;
+            box-shadow: 0 4px 12px var(--card-shadow-hover);
+        }
+
+        .chart-tooltip.visible {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        .chart-tooltip .tt-date {
+            font-weight: 500;
+            opacity: .8;
+        }
+
         /* Pull-to-refresh indicator */
         .pull-indicator {
             position: fixed;
@@ -1136,6 +1296,9 @@
                         <button class="menu-item" id="themeToggle" onclick="toggleTheme()" role="menuitem">
                             <span id="themeIcon"></span><span id="themeLabel">Dark mode</span>
                         </button>
+                        <button class="menu-item" onclick="openLevelChart()" role="menuitem">
+                            <span>📈</span><span>Level progression</span>
+                        </button>
                         <button class="menu-item danger" onclick="handleLogout()" role="menuitem">&#9211; Sign
                             Out</button>
                     </div>
@@ -1197,6 +1360,17 @@
             </div>
 
             <div id="content"></div>
+        </div>
+
+        <!-- Level progression modal -->
+        <div class="modal-overlay" id="levelModal" onclick="onLevelModalBackdrop(event)">
+            <div class="modal-card">
+                <div class="modal-header">
+                    <span>Level progression</span>
+                    <button class="modal-close" onclick="closeLevelChart()" aria-label="Close">&times;</button>
+                </div>
+                <div class="modal-body" id="levelChartBody"></div>
+            </div>
         </div>
     </div>
 
@@ -1456,6 +1630,142 @@
             }
         }
 
+        // ========================
+        // LEVEL PROGRESSION CHART
+        // ========================
+        function getLevelHistory() {
+            try {
+                const raw = localStorage.getItem(LEVELS_STORAGE_KEY);
+                if (!raw) return [];
+                const levels = JSON.parse(raw);
+                if (Array.isArray(levels) && levels.length > 0 && Array.isArray(levels[0].history)) {
+                    return levels[0].history
+                        .filter(h => h.level_value != null && h.date)
+                        .map(h => ({ value: h.level_value, date: new Date(h.date + 'Z') }))
+                        .sort((a, b) => a.date - b.date);
+                }
+            } catch (_) { }
+            return [];
+        }
+
+        function renderLevelChart(points) {
+            if (!points.length) {
+                return '<div class="chart-empty">No level history available yet.</div>';
+            }
+
+            const W = 640, H = 320, padL = 40, padR = 18, padT = 18, padB = 42;
+            const plotW = W - padL - padR;
+            const plotH = H - padT - padB;
+            const n = points.length;
+
+            const values = points.map(p => p.value);
+            let minV = Math.min(...values), maxV = Math.max(...values);
+            const vPad = Math.max(0.2, (maxV - minV) * 0.15);
+            minV = Math.max(0, minV - vPad);
+            maxV = maxV + vPad;
+
+            // Evenly space points along the X axis (aligned by index, not by elapsed time)
+            const xOf = i => padL + (n === 1 ? plotW / 2 : (i / (n - 1)) * plotW);
+            const yOf = v => padT + (maxV === minV ? plotH / 2 : (1 - (v - minV) / (maxV - minV)) * plotH);
+
+            const yTicks = 5;
+            let grid = '';
+            for (let i = 0; i <= yTicks; i++) {
+                const v = minV + (maxV - minV) * (i / yTicks);
+                const y = yOf(v);
+                grid += '<line class="chart-grid" x1="' + padL + '" y1="' + y.toFixed(1) + '" x2="' + (W - padR) + '" y2="' + y.toFixed(1) + '"></line>';
+                grid += '<text class="chart-ylabel" x="' + (padL - 6) + '" y="' + (y + 3).toFixed(1) + '">' + v.toFixed(1) + '</text>';
+            }
+
+            let xlabels = '';
+            const labelCount = Math.min(n, 6);
+            const seenIdx = new Set();
+            for (let i = 0; i < labelCount; i++) {
+                const idx = labelCount <= 1 ? 0 : Math.round(i * (n - 1) / (labelCount - 1));
+                if (seenIdx.has(idx)) continue;
+                seenIdx.add(idx);
+                const p = points[idx];
+                const x = xOf(idx);
+                const label = p.date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: 'UTC' });
+                xlabels += '<text class="chart-xlabel" x="' + x.toFixed(1) + '" y="' + (H - padB + 18) + '">' + esc(label) + '</text>';
+            }
+
+            const linePts = points.map((p, i) => xOf(i).toFixed(1) + ',' + yOf(p.value).toFixed(1));
+            const linePath = 'M' + linePts.join(' L');
+            const baseY = yOf(minV).toFixed(1);
+            const areaPath = 'M' + xOf(0).toFixed(1) + ',' + baseY
+                + ' L' + linePts.join(' L')
+                + ' L' + xOf(n - 1).toFixed(1) + ',' + baseY + ' Z';
+
+            let dots = '', hits = '';
+            points.forEach((p, i) => {
+                const x = xOf(i), y = yOf(p.value);
+                const dateLbl = p.date.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric', timeZone: 'UTC' });
+                dots += '<circle class="chart-dot" cx="' + x.toFixed(1) + '" cy="' + y.toFixed(1) + '" r="3.5"></circle>';
+                hits += '<circle class="chart-hit" cx="' + x.toFixed(1) + '" cy="' + y.toFixed(1) + '" r="14" fill="transparent"'
+                    + ' data-date="' + esc(dateLbl) + '" data-value="' + p.value.toFixed(2) + '"></circle>';
+            });
+
+            return '<div class="chart-wrap" id="chartWrap">'
+                + '<svg class="level-chart" viewBox="0 0 ' + W + ' ' + H + '" preserveAspectRatio="xMidYMid meet" role="img" aria-label="Level progression chart">'
+                + grid
+                + '<path class="chart-area" d="' + areaPath + '"></path>'
+                + '<path class="chart-line" d="' + linePath + '"></path>'
+                + dots
+                + hits
+                + xlabels
+                + '</svg>'
+                + '<div class="chart-tooltip" id="chartTooltip"></div>'
+                + '</div>';
+        }
+
+        function attachChartInteractions() {
+            const wrap = document.getElementById('chartWrap');
+            const tip = document.getElementById('chartTooltip');
+            if (!wrap || !tip) return;
+            const show = (hit) => {
+                const wrapRect = wrap.getBoundingClientRect();
+                const r = hit.getBoundingClientRect();
+                const cx = r.left + r.width / 2 - wrapRect.left;
+                const cy = r.top + r.height / 2 - wrapRect.top;
+                tip.innerHTML = '<span class="tt-value">Level ' + esc(hit.getAttribute('data-value')) + '</span>'
+                    + '<span class="tt-date">' + esc(hit.getAttribute('data-date')) + '</span>';
+                tip.classList.add('visible');
+                const tipW = tip.offsetWidth, tipH = tip.offsetHeight;
+                let left = cx - tipW / 2;
+                left = Math.max(4, Math.min(left, wrap.clientWidth - tipW - 4));
+                let top = cy - tipH - 12;
+                if (top < 4) top = cy + 14;
+                tip.style.left = left + 'px';
+                tip.style.top = top + 'px';
+            };
+            const hide = () => tip.classList.remove('visible');
+            wrap.querySelectorAll('.chart-hit').forEach(hit => {
+                hit.addEventListener('mouseenter', () => show(hit));
+                hit.addEventListener('mouseleave', hide);
+                hit.addEventListener('click', (e) => { e.stopPropagation(); show(hit); });
+            });
+            wrap.addEventListener('click', (e) => {
+                if (!(e.target.classList && e.target.classList.contains('chart-hit'))) hide();
+            });
+        }
+
+        function openLevelChart() {
+            setMenuOpen(false);
+            const points = getLevelHistory();
+            document.getElementById('levelChartBody').innerHTML = renderLevelChart(points);
+            document.getElementById('levelModal').classList.add('open');
+            attachChartInteractions();
+        }
+
+        function closeLevelChart() {
+            document.getElementById('levelModal').classList.remove('open');
+        }
+
+        function onLevelModalBackdrop(e) {
+            if (e.target === e.currentTarget) closeLevelChart();
+        }
+
         async function handleLogin(event) {
             event.preventDefault();
             const email = document.getElementById('loginEmail').value.trim();
@@ -1587,11 +1897,13 @@
             }
         });
         document.addEventListener('keydown', (e) => {
-            if (e.key === 'Escape') setMenuOpen(false);
+            if (e.key === 'Escape') { setMenuOpen(false); closeLevelChart(); }
             // Arrow keys navigate between dates
             if (e.key === 'ArrowLeft' || e.key === 'ArrowRight') {
                 // Ignore while the login screen is showing
                 if (document.getElementById('appContent').classList.contains('hidden')) return;
+                // Ignore while the level chart modal is open
+                if (document.getElementById('levelModal').classList.contains('open')) return;
                 // Don't hijack arrows while typing/adjusting a form control
                 const el = e.target;
                 if (el && typeof el.closest === 'function' && el.closest('input, textarea, select')) return;
