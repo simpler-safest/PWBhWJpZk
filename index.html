@@ -1513,10 +1513,10 @@
             const expMs = new Date(auth.access_token_expiration + 'Z').getTime();
             const delay = expMs - Date.now() - TOKEN_REFRESH_MARGIN_MS;
 
-            if (delay <= 0) {
-                // Token is already near-expired, refresh immediately
-                refreshAccessToken();
-            } else {
+            // Only schedule a FUTURE refresh. If the token is already within the margin
+            // (delay <= 0), do NOT refresh now — let it happen lazily on the next request
+            // (via ensureValidToken) or when a request returns 401.
+            if (delay > 0) {
                 refreshTimerHandle = setTimeout(() => {
                     refreshAccessToken();
                 }, delay);
